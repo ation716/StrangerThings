@@ -494,7 +494,7 @@ class Bins():
 
 class Business:
     """业务"""
-    def __init__(self, business_id, from_regions, to_regions, bins:Bins,vehicles,load_type,region_index=(-1,-1),interval=1, const_output=1,core=None):
+    def __init__(self, business_id, bins:Bins,vehicles, load_type,region_area,interval=1, const_output=1,core=None, group=None, bus_type=None, from_index=None, to_index=None,):
         """
         :param business_id: 业务id
         :param from_regions: 搬运取货区域
@@ -508,16 +508,18 @@ class Business:
         :param region_index:
         """
         self.business_id = str(business_id)
-        self.from_regions = from_regions
-        self.to_regions = to_regions
+        self.from_index = from_index
+        self.to_index = to_index
         self.interval = interval
         self.const_output = const_output
         self.bins = bins
         self.vehicle_dict={vehicle:{} for vehicle in vehicles}  # {name:{cid:gid}}
         self.load_type = load_type
-        self.region_index = region_index
+        self.region_area = region_area
         self.runing=[(0,0,0) for i in range(self.const_output)]  # 正在执行的运单  (oid,area,index)
         self.core = core
+        self.group = group
+        self.bus_type = bus_type
 
     async def perform_task_load_box(self):
         """每隔设定的时间间隔执行一次搬运操作"""
@@ -527,7 +529,7 @@ class Business:
             for i in range(to_send):
                 # 选取 load点 ;oid = 'bus' + 1234 + 'type' + 1 + xxxxxxxx
                 oid = "bus" + self.business_id+ "type" + str(self.load_type) + str(uuid.uuid4())
-                pos, pos_index = await self.bins.choose_pos(area_name=self.from_regions, state= self.type, lockid=oid)
+                pos, pos_index = await self.bins.choose_pos(area_name=self.from_regions, state= self.load_type, lockid=oid)
                 if pos:
                     print(f"Business {self.business_id}:load {pos}")
                     self.core.setShareOrder(oid=oid,loc=pos,operation='load',keytask='load',GoodsType=self.load_type)
@@ -568,43 +570,45 @@ class Business:
         """
         取放货一体
         :param from_appoints: 指定去哪儿放货， 列表：0库位名，1index ,index指的是该库位在库区中是第几个
-        :param to_appoints: 指定去哪儿取货
+        :param to_appoints: 指定去哪儿取货, 同上
         :return:
         """
         # 指定了区域中具体的取货地点，说明是设备触发的业务，运行次数由传过来的from_appoints的长度决定
         if len(from_appoints) > 0 :
             # 判断库位状态 为 有货 且 货物type为 self.load_type【加一层判断更安全】
             if self.bins.binarea[self.from_regions]['bin_list'][from_appoints[1]].goodsType == self.load_type:
-                # 安排机器人来执行任务
-                for vehicle,item in self.vehicle_dict.items():
-                    pass
+                pass
 
             return
         # 指定了区域中具体的放货地点，说明是设备触发的业务，运行次数由传过来的to_appoints的长度决定
-        if len(to_appoints) > 0 :
+        if len(to_appoints):
+            # 判断库位状态 为 有货 且 货物type为 0【加一层判断更安全】
+            if self.bins.binarea[self.to_regions]['bin_list'][to_appoints[1]].goodsType == 0:
+                pass
             return
-        # 没有指定具体区域，则说明是没有设备触发的业务，每隔设定的时间间隔执行一次搬运操作
+        # 非设备触发的业务
         while True:
-            # 等待库位资源
-            to_send = self.const_output - sum((0 for i in self.runing if i[0] == 0))
+            to_send = self.const_output - sum((0 for i in self.runing if i[0]==0))
             for i in range(to_send):
-                # 选取 load点 ;oid = 'bus' + 1234 + 'type' + 1 + xxxxxxxx
-                oid = "bus" + self.business_id + "type" + str(self.load_type) + str(uuid.uuid4())
-                pos, pos_index = await self.bins.choose_pos(area_name=self.from_regions, state=self.type, lockid=oid)
-                if pos:
-                    print(f"Business {self.business_id}:load {pos}")
-                    self.core.setShareOrder(oid=oid, loc=pos, operation='load', keytask='load',
-                                            GoodsType=self.load_type)
+                # 生成oid = 'bus' + 1234 + 'type' + 1 + xxxxxxxx
+                oid = "bus" + self.business_id + "type" + str(self.load_type) + "end" + str(uuid.uuid4())
+                # 选取库位 - 要连续选两个库位
+                # 取货库位
+                pos1, pos_index1 = await self.bins.choose_pos(area_name=self.from_regions, state=self.load_type, lockId=oid)
+                # 放货库位
+                pos2, pos_index2 = await self.bins.choose_pos(area_name=self.to_regions, state=0,
+                                                              lockId=oid)
+                if pos1 and pos2:
+                    print(f"Business {self.business_id}:load {pos1}")
                 else:
-                    # print(f"Business {self.business_id}:can not find load pos")
+                    # print(f"Business {self.business_id}:can not find load pos,no goodsType: {self.load_type}")
+                    # 要不要break TODO：
                     break
-                # 让出控制权
+                # 让出CPU
                 await asyncio.sleep(0)
-
             # 等待下一个搬运周期
             await asyncio.sleep(self.interval)
-
-    async def trace_block(self,ponints_list):
+    async def trace_block(self,area_list=None):
         """"""
         pass
 
@@ -822,6 +826,7 @@ async def main():
     # A
 
     # 1 到 2，运货
+    # bus_data =
     business1 = Business(business_id=1, from_regions="A", to_regions="B", interval=5, const_output=500,
                          bins=bins,vehicles=vehicles,load_type=1, core=core)
     data = {
@@ -874,4 +879,3 @@ if __name__ == "__main__":
     # print(len(bins.semaphores))
     #
     asyncio.run(main())
-
