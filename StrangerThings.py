@@ -604,7 +604,9 @@ class Business:
             # 等待下一个搬运周期
             await asyncio.sleep(self.interval)
 
-
+    async def trace_block(self,ponints_list):
+        """"""
+        pass
 
 
 class EL():
