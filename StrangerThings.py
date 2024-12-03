@@ -313,8 +313,20 @@ class CoreUtil(SingletonMetaClass):
         return oid
 
     def get_contaioners_data(vehicle) -> list:
+        """
+        查询机器人容器状态 - 针对料箱车的
+        :return:
+        """
+        #TODO:
         r = requests.get(cg.ip + f"/robotsStatus?vehicles={vehicle}").json()
         return r['report'][0]['rbk_report']['containers']
+
+    def get_robot_current_order(vehicle):
+        """
+        目前来看，是针对顶升车和叉车的，查询机器人
+        :return:
+        """
+
     def set_operation_time(self,vehicle:str,operation: Union[str,list[str]]="ForkLoad",t: Union[float,list]=10):
         """设置仿真机器人动作延迟，
         需要241129之后的版本
@@ -476,9 +488,8 @@ class Bins():
 
 class Business:
     """业务"""
-    def __init__(self, business_id, from_regions, to_regions, interval, const_output,bins:Bins,vehicles,load_type,region_index=(-1,-1)):
+    def __init__(self, business_id, from_regions, to_regions, bins:Bins,vehicles,load_type,region_index=(-1,-1),interval=1, const_output=1):
         """
-
         :param business_id: 业务id
         :param from_regions: 搬运取货区域
         :param to_regions: 搬运放货区域
@@ -487,6 +498,8 @@ class Business:
         :param bins: 库位对象，所有业务共用库位信息
         :param vehicles: 这些业务需要由哪车完成 用于跟踪料箱车信息
         :param region_index: 取放货区域下标
+        :param load_type: 货物类型
+        :param region_index:
         """
         self.business_id = str(business_id)
         self.from_regions = from_regions
@@ -543,6 +556,51 @@ class Business:
                                 else:
                                     self.core.setShareOrder(oid=oid,vehicle=v,operation='unload',goodsId=container['goods_id'],loc=pos)
             await asyncio.sleep(1)
+
+
+    async def perform_task_box(self, from_appoints = None, to_appoints = None):
+        """
+        取放货一体
+        :param from_appoints: 指定放货区域， 字典，{库位名 : index} ,index指的是该库位在库区中是第几个
+        :param to_appoints: 指定取货区域
+        :return:
+        """
+        # 指定了区域中具体的取货地点，说明是设备触发的业务，运行次数由传过来的from_appoints的长度决定
+        if len(from_appoints) > 0 :
+            for key, value in from_appoints.items():
+                # 判断库位状态 为 有货 且 货物type为 self.load_type【加一层判断更安全】
+                if self.bins.binarea[self.from_regions]['bin_list'][value].goodsType == self.load_type:
+                    # 安排机器人来执行任务
+
+
+            return
+        # 指定了区域中具体的放货地点，说明是设备触发的业务，运行次数由传过来的to_appoints的长度决定
+        if len(to_appoints) > 0 :
+            return
+        # 没有指定具体区域，则说明是没有设备触发的业务，每隔设定的时间间隔执行一次搬运操作
+        while True:
+            # 等待库位资源
+            to_send = self.const_output - sum((0 for i in self.runing if i[0] == 0))
+            for i in range(to_send):
+                # 选取 load点 ;oid = 'bus' + 1234 + 'type' + 1 + xxxxxxxx
+                oid = "bus" + self.business_id + "type" + str(self.load_type) + str(uuid.uuid4())
+                pos, pos_index = await self.bins.choose_pos(area_name=self.from_regions, state=self.type, lockid=oid)
+                if pos:
+                    print(f"Business {self.business_id}:load {pos}")
+                    self.core.setShareOrder(oid=oid, loc=pos, operation='load', keytask='load',
+                                            GoodsType=self.load_type)
+                else:
+                    # print(f"Business {self.business_id}:can not find load pos")
+                    break
+                # 让出控制权
+                await asyncio.sleep(0)
+
+            # 等待下一个搬运周期
+            await asyncio.sleep(self.interval)
+
+
+
+
 class EL():
     """
     short for Eleven. like Mr.Fantastic, who have a superpower or something,and is extremely sensitive to evil
@@ -563,8 +621,8 @@ class EL():
         finalType: 加工后货物类型   
         from_area: 取货地的库位归属的区域
         to_area: 放货地的库位归属的区域
-        bus_from:
-        bus_to:
+        bus_from: 触发取货业务
+        bus_to: 绑定的
         workingTime: 加工需要的时间   
         changeSt: 上次使用设备的时间
         state: 设备状态，-1表示设备停用，0表示设备启用中，且设备空闲，1表示设备正在加工货物
@@ -621,9 +679,10 @@ class EL():
         while True:
             # 设备空闲，找货物去加工
             if self.power.state == 0:
-                # if self.power.changeSt==0 or time.time()-self.power.changeSt>random.gauss(mu=self.power.workingTime,sigma=0.1*self.power.workingTime):
+                # 标记teleportFrom中库位是否有货
+                teleport_flg = False
                 # 设备加工
-                for key, value in self.power.teleportFrom.keys():
+                for key, value in self.power.teleportFrom.items():
                     # 判断库位状态 为 有货 且 货物为originType
                     if self.bins.binarea[self.power.from_area]['bin_list'][value].goodsType == self.power.originType:
                         # 将设备设为正在加工货物
@@ -631,17 +690,26 @@ class EL():
                         # 将库位设为空 - 货物这会在设备上
                         self.bins.binarea[self.power.from_area]['bin_list'][value] = \
                             self.binarea[self.power.from_area]['bin_list'][value]._replace(goodsType=0)
-                        await asyncio.sleep(
-                            random.gauss(mu=self.power.workingTime, sigma=0.1 * self.power.workingTime))
+                        self.power.changeSt = time.time()
+                        # 触发业务过来放货
+                        self.power.bus_from.perform_task_box(to_appoints=self.power.teleportFrom)
+                        # 库位中存在有货库位
+                        teleport_flg = True
+                        break
+                if teleport_flg:
+                    # 代码能走到这里，说明设备空闲的，但没有找到库位去取货，触发业务过来放货
+                    self.power.bus_from.perform_task_box(to_appoints=self.power.teleportFrom)
             # 设备运行中，待加工完成，去放货
             if self.power.state == 1 and (time.time() - self.power.changeSt) >= random.gauss(mu=self.power.workingTime, sigma=0.1 * self.power.workingTime):
                 # 获取放置目标库位
-                for key, value in self.power.teleportTo.keys():
+                for key, value in self.power.teleportTo.items():
                     if self.bins.binarea[self.power.to_area]['bin_list'][value].goodsType == 0:
                         self.bins.binarea[self.power.to_area]['bin_list'][value] = \
                             self.binarea[self.power.to_area]['bin_list'][value]._replace(goodsType=self.power.finalType)
                         # 加工结束
                         self.power.state = 0
+                        # 出发业务把货拿走
+                        self.power.bus_to.perform_task_box(from_appoints=self.power.teleportTo)
                         break
             # 让出CPU
             await asyncio.sleep(0.5)
