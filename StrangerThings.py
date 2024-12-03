@@ -240,13 +240,18 @@ buss_area1={"busi1":['HJ0009HW0101', 'HJ0004HW0101', 'HJ0021HW0101', 'HJ0003HW01
             'HJ0267HW0101', 'HJ0279HW0101', 'HJ0264HW0101', 'HJ0276HW0101'
                     ]
            }
-buss_area={
+buss_area2={
       'A':{'AP774': 'LM1194', 'AP896': 'LM1193', 'AP776': 'LM1192', 'AP897': 'LM1191', 'AP777': 'LM1190',
             'AP898': 'LM1189', 'AP778': 'LM1188', 'AP899': 'LM1187', 'AP547': 'LM1186', 'AP1109': 'LM1185',
             'AP546': 'LM1184', 'AP1110': 'LM1183', 'AP543': 'LM1182', 'AP1111': 'LM1181', 'AP542': 'LM1180',
             'AP1112': 'LM1179', 'AP502': 'LM1137', 'AP504': 'LM1138', 'AP499': 'LM1139', 'AP498': 'LM1140'},
       'B':{'AP940': 'LM631', 'AP1350': 'LM631', 'AP1351': 'LM632', 'AP941': 'LM632', 'AP1352': 'LM633',
             'AP942': 'LM633', 'AP1353': 'LM634', 'AP943': 'LM634', 'AP1354': 'LM635', 'AP944': 'LM635'}
+}
+buss_area={
+      'A':['AP774', 'AP896', 'AP776', 'AP897', 'AP777'],
+      'B':['AP940', 'AP1350', 'AP1351', 'AP941', 'AP1352',
+            'AP942', 'AP1353', 'AP943', 'AP1354', 'AP944']
 }
 
 class SingletonMetaClass(type):
@@ -256,12 +261,12 @@ class SingletonMetaClass(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(SingletonMetaClass, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
-class CoreUtil(SingletonMetaClass):
+class CoreUtil(metaclass=SingletonMetaClass):
     """"""
     def __init__(self,ip:str=""):
         """"""
-        self.ip = cg.ip if ip is None else ip
-
+        # self.ip = cg.ip if ip is None else ip
+        self.ip = "http://127.0.0.1:8088"
     def getOrderState(self,oid):
         """查询运单状态，返回状态和动作"""
         r = requests.get(self.ip + "/orderDetails/" + oid).json()
@@ -317,7 +322,6 @@ class CoreUtil(SingletonMetaClass):
         查询机器人容器状态 - 针对料箱车的
         :return:
         """
-        #TODO:
         r = requests.get(cg.ip + f"/robotsStatus?vehicles={vehicle}").json()
         return r['report'][0]['rbk_report']['containers']
 
@@ -326,6 +330,8 @@ class CoreUtil(SingletonMetaClass):
         目前来看，是针对顶升车和叉车的，查询机器人
         :return:
         """
+        r = requests.get(cg.ip + f"/robotsStatus?vehicles={vehicle}").json()
+        return r['report'][0]['current_order']
 
     def set_operation_time(self,vehicle:str,operation: Union[str,list[str]]="ForkLoad",t: Union[float,list]=10):
         """设置仿真机器人动作延迟，
@@ -488,7 +494,7 @@ class Bins():
 
 class Business:
     """业务"""
-    def __init__(self, business_id, from_regions, to_regions, bins:Bins,vehicles,load_type,region_index=(-1,-1),interval=1, const_output=1):
+    def __init__(self, business_id, from_regions, to_regions, bins:Bins,vehicles,load_type,region_index=(-1,-1),interval=1, const_output=1,core=None):
         """
         :param business_id: 业务id
         :param from_regions: 搬运取货区域
@@ -511,7 +517,7 @@ class Business:
         self.load_type = load_type
         self.region_index = region_index
         self.runing=[(0,0,0) for i in range(self.const_output)]  # 正在执行的运单  (oid,area,index)
-        self.core = CoreUtil()
+        self.core = core
 
     async def perform_task_load_box(self):
         """每隔设定的时间间隔执行一次搬运操作"""
@@ -558,20 +564,20 @@ class Business:
             await asyncio.sleep(1)
 
 
-    async def perform_task_box(self, from_appoints = None, to_appoints = None):
+    async def perform_task(self, from_appoints = None, to_appoints = None):
         """
         取放货一体
-        :param from_appoints: 指定放货区域， 字典，{库位名 : index} ,index指的是该库位在库区中是第几个
-        :param to_appoints: 指定取货区域
+        :param from_appoints: 指定去哪儿放货， 列表：0库位名，1index ,index指的是该库位在库区中是第几个
+        :param to_appoints: 指定去哪儿取货
         :return:
         """
         # 指定了区域中具体的取货地点，说明是设备触发的业务，运行次数由传过来的from_appoints的长度决定
         if len(from_appoints) > 0 :
-            for key, value in from_appoints.items():
-                # 判断库位状态 为 有货 且 货物type为 self.load_type【加一层判断更安全】
-                if self.bins.binarea[self.from_regions]['bin_list'][value].goodsType == self.load_type:
-                    # 安排机器人来执行任务
-
+            # 判断库位状态 为 有货 且 货物type为 self.load_type【加一层判断更安全】
+            if self.bins.binarea[self.from_regions]['bin_list'][from_appoints[1]].goodsType == self.load_type:
+                # 安排机器人来执行任务
+                for vehicle,item in self.vehicle_dict.items():
+                    pass
 
             return
         # 指定了区域中具体的放货地点，说明是设备触发的业务，运行次数由传过来的to_appoints的长度决定
@@ -606,7 +612,7 @@ class EL():
     short for Eleven. like Mr.Fantastic, who have a superpower or something,and is extremely sensitive to evil
     """
     gifted_counter=0
-    def __init__(self, vehicles,bins,data:list=None):
+    def __init__(self, vehicles,bins,data=None):
         """
 
         :param vehicles:
@@ -645,30 +651,34 @@ class EL():
         # 初始化，teleport_from 、teleport_to
         # 获取 teleport_from 中每个元素在 库位Bins中 from_area 中的位置
         from_area = buss_area.get(data["from_area"])
-        position_dict = {value: index for index, value in enumerate(from_area)}
-        positions_from = [position_dict.get(element, -1) for element in data["teleport_from"]]  # 如果元素不存在，返回 -1
+        positions_from = [
+            from_area.index(element) if element in from_area else -1
+            for element in data["teleport_from"]
+        ]  # 如果元素不存在，返回 -1
         # 如果有元素不存在，就抛异常
         if positions_from.__contains__(-1):
             raise ValueError(f"teleport_from有误，在from_area找不到")
         # 获取 teleport_to 中每个元素在  库位Bins中 to_area 中的位置
         to_area = buss_area.get(data["to_area"])
-        position_dict = {value: index for index, value in enumerate(to_area)}
-        positions_to = [position_dict.get(element, -1) for element in data["teleport_to"]]  # 如果元素不存在，返回 -1
+        positions_to = [
+            to_area.index(element) if element in to_area else -1
+            for element in data["teleport_to"]
+        ]  # 如果元素不存在，返回 -1
         if positions_to.__contains__(-1):
             raise ValueError(f"teleport_to有误，在to_area中找不到")
         # 初始化赋值 - 返回
         return self.normal_manipulation(data["name"],
-                                              dict(zip(data["teleport_from"],positions_from)),
-                                              dict(zip(data["teleport_to"], positions_to)),
-                                              data["origin_type"],
-                                              data["final_type"],
-                                              data["from_area"],
-                                              data["to_area"],
-                                              data["bus_from"],
-                                              data["bus_to"],
-                                              data["working_time"],
-                                              data["changeSt"],
-                                              data["state"]
+                                          dict(zip(data["teleport_from"],positions_from)),
+                                          dict(zip(data["teleport_to"], positions_to)),
+                                          data["origin_type"],
+                                          data["final_type"],
+                                          data["from_area"],
+                                          data["to_area"],
+                                          data["bus_from"],
+                                          data["bus_to"],
+                                          data["working_time"],
+                                          data["changeSt"],
+                                          data["state"]
                                               )
 
     async def get_through(self):
@@ -680,40 +690,58 @@ class EL():
             # 设备空闲，找货物去加工
             if self.power.state == 0:
                 # 标记teleportFrom中库位是否有货
-                teleport_flg = False
+                teleport_flg = True
                 # 设备加工
                 for key, value in self.power.teleportFrom.items():
                     # 判断库位状态 为 有货 且 货物为originType
                     if self.bins.binarea[self.power.from_area]['bin_list'][value].goodsType == self.power.originType:
                         # 将设备设为正在加工货物
-                        self.power.state = 1
-                        # 将库位设为空 - 货物这会在设备上
+                        self.power = self.power._replace(state=1,changeSt=time.time())
+                        # 将库位设为空 - 货物这会在设备上 TODO:修改为调用方法
                         self.bins.binarea[self.power.from_area]['bin_list'][value] = \
-                            self.binarea[self.power.from_area]['bin_list'][value]._replace(goodsType=0)
-                        self.power.changeSt = time.time()
+                            self.bins.binarea[self.power.from_area]['bin_list'][value]._replace(goodsType=0)
                         # 触发业务过来放货
                         self.power.bus_from.perform_task_box(to_appoints=self.power.teleportFrom)
                         # 库位中存在有货库位
-                        teleport_flg = True
+                        teleport_flg = False
                         break
                 if teleport_flg:
                     # 代码能走到这里，说明设备空闲的，但没有找到库位去取货，触发业务过来放货
-                    self.power.bus_from.perform_task_box(to_appoints=self.power.teleportFrom)
+                    tasks = []
+                    for key, value in self.power.teleportFrom.items():
+                        appoints = [key,value]
+                        task = asyncio.create_task(self.power.bus_from.perform_task_box(to_appoints=appoints))
+                        tasks.append(task)
+                    # 这里是需要等待至少有一个业务补货完成再继续运功设备
+                    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
             # 设备运行中，待加工完成，去放货
             if self.power.state == 1 and (time.time() - self.power.changeSt) >= random.gauss(mu=self.power.workingTime, sigma=0.1 * self.power.workingTime):
+                # 标记teleportTo中库位是否有货
+                teleport_flg = True
                 # 获取放置目标库位
                 for key, value in self.power.teleportTo.items():
                     if self.bins.binarea[self.power.to_area]['bin_list'][value].goodsType == 0:
+                        # TODO:修改为调用方法
                         self.bins.binarea[self.power.to_area]['bin_list'][value] = \
-                            self.binarea[self.power.to_area]['bin_list'][value]._replace(goodsType=self.power.finalType)
+                            self.bins.binarea[self.power.to_area]['bin_list'][value]._replace(goodsType=self.power.finalType)
                         # 加工结束
-                        self.power.state = 0
+                        self.power = self.power._replace(state=0)
                         # 出发业务把货拿走
                         self.power.bus_to.perform_task_box(from_appoints=self.power.teleportTo)
+                        teleport_flg = False
                         break
+                if teleport_flg:
+                    # 代码能走到这里，说明设备没有找到库位去放货，触发业务过来取货
+                    tasks = []
+                    for key, value in self.power.teleportTo.items():
+                        appoints = [key,value]
+                        task = asyncio.create_task(self.power.bus_from.perform_task_box(from_appoints=appoints))
+                        tasks.append(task)
+                    # 这里是需要等待至少有一个业务补货完成再继续运功设备
+                    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             # 让出CPU
             await asyncio.sleep(0.5)
-
 
 
 
@@ -755,6 +783,7 @@ async def main():
     test_data2 = {'B': buss_area.get("B")
                  }
     bins = Bins()
+    core = CoreUtil()
     order_system = OrderSystem(bins=bins)
     vehicles=[f"AMB-0{i}" for i in range(1,7)]
     for i in vehicles:
@@ -785,25 +814,29 @@ async def main():
     bins.update_area(test_data1, autoAddType=1,autoClearType=1,ifrandom=True)
     bins.update_area(test_data2, autoAddType=1, autoClearType=1, ifrandom=True)
     # 设备绑定的点位A
-    teleportFrom = ['AP774', 'AP778']
+    teleportFrom = ['AP774', 'AP776']
     # 设备绑定的点位B
     teleportTo = ['AP940', 'AP1351']
     # A
+
+    # 1 到 2，运货
+    business1 = Business(business_id=1, from_regions="A", to_regions="B", interval=5, const_output=500,
+                         bins=bins,vehicles=vehicles,load_type=1, core=core)
     data = {
         "name": '01',
-        "teleport_from":teleportFrom,
-        "teleport_to":teleportTo,
-        "origin_type":1,
-        "final_type":2,
-        "from_area":'A',
-        "to_area":"B",
-        "bus_from":"bus_01",
-        "bus_to":"bus_02",
-        "working_time":18,
-        "changeSt":0,
-        "state":0
+        "teleport_from": teleportFrom,
+        "teleport_to": teleportTo,
+        "origin_type": 1,
+        "final_type": 2,
+        "from_area": 'A',
+        "to_area": "B",
+        "bus_from": business1,
+        "bus_to": business1,
+        "working_time": 18,
+        "changeSt": 0,
+        "state": 0
     }
-    el = EL(vehicles,bins,data)
+    el = EL(vehicles=vehicles,bins=bins,data=data)
     await el.get_through()
     # 创建多个业务，每个业务都有不同的搬运周期
     # # 1 到 2，运货
@@ -839,5 +872,4 @@ if __name__ == "__main__":
     # print(len(bins.semaphores))
     #
     asyncio.run(main())
-
 
