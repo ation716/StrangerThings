@@ -1,5 +1,5 @@
-import config as cg
 import requests
+import json
 class SingletonMetaClass(type):
     _instances = {}
 
@@ -7,12 +7,12 @@ class SingletonMetaClass(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(SingletonMetaClass, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
-class CoreUtils(SingletonMetaClass):
+class CoreUtil(metaclass=SingletonMetaClass):
     """"""
     def __init__(self,ip:str=""):
         """"""
-        self.ip = cg.ip if ip is None else ip
-
+        # self.ip = cg.ip if ip is None else ip
+        self.ip = "http://127.0.0.1:8088"
     def getOrderState(self,oid):
         """查询运单状态，返回状态和动作"""
         r = requests.get(self.ip + "/orderDetails/" + oid).json()
@@ -64,5 +64,48 @@ class CoreUtils(SingletonMetaClass):
         return oid
 
     def get_contaioners_data(vehicle) -> list:
+        """
+        查询机器人容器状态 - 针对料箱车的
+        :return:
+        """
         r = requests.get(cg.ip + f"/robotsStatus?vehicles={vehicle}").json()
         return r['report'][0]['rbk_report']['containers']
+
+    def get_robot_current_order(vehicle):
+        """
+        目前来看，是针对顶升车和叉车的，查询机器人
+        :return:
+        """
+        r = requests.get(cg.ip + f"/robotsStatus?vehicles={vehicle}").json()
+        return r['report'][0]['current_order']
+
+    def set_operation_time(self,vehicle:str,operation: Union[str,list[str]]="ForkLoad",t: Union[float,list]=10):
+        """设置仿真机器人动作延迟，
+        需要241129之后的版本
+        """
+        match operation:
+            case str():
+                data = {
+                    'vehicle_id': vehicle,
+                    'operation_time': json.dumps([{
+                        'operation': operation,
+                        'time': t
+                    }])
+                }
+            case list():
+                data = {
+                    'vehicle_id': vehicle,
+                    'operation_time': json.dumps(
+                        [{'operation': op, 'time': ti} for op, ti in zip(operation, t)]
+                    )
+                }
+            case _:
+                raise TypeError('operation 参数必须为 str 或 list 类型')
+        return requests.post(f"{self.ip}/updateSimRobotState", json.dumps(data)).json()
+
+    def modifyParamNew(self, data):
+        """
+        新版本的core，用http设置参数
+        """
+        r = requests.post(self.ip+"/saveCoreParam", json = data)
+        print(r.content)
