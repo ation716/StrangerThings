@@ -5,6 +5,8 @@ import os
 from mimetypes import inited
 from typing import Union
 
+from pkg_resources import NoDists
+
 p = os.path.abspath(__file__)
 p = os.path.dirname(p)
 p = os.path.dirname(p)
@@ -24,6 +26,21 @@ try:
 except Exception as e:
     print(e)
 
+buss_area2={
+      'A':{'AP774': 'LM1194', 'AP896': 'LM1193', 'AP776': 'LM1192', 'AP897': 'LM1191', 'AP777': 'LM1190',
+            'AP898': 'LM1189', 'AP778': 'LM1188', 'AP899': 'LM1187', 'AP547': 'LM1186', 'AP1109': 'LM1185',
+            'AP546': 'LM1184', 'AP1110': 'LM1183', 'AP543': 'LM1182', 'AP1111': 'LM1181', 'AP542': 'LM1180',
+            'AP1112': 'LM1179', 'AP502': 'LM1137', 'AP504': 'LM1138', 'AP499': 'LM1139', 'AP498': 'LM1140'},
+      'B':{'AP940': 'LM631', 'AP1350': 'LM631', 'AP1351': 'LM632', 'AP941': 'LM632', 'AP1352': 'LM633',
+            'AP942': 'LM633', 'AP1353': 'LM634', 'AP943': 'LM634', 'AP1354': 'LM635', 'AP944': 'LM635'}
+}
+buss_area={
+      'A':['AP774', 'AP896', 'AP776', 'AP897', 'AP777'],
+      'B':['AP940', 'AP1350', 'AP1351', 'AP941', 'AP1352',
+            'AP942', 'AP1353', 'AP943', 'AP1354', 'AP944'],
+      'C':['AP1','AP2'],
+      'D':['AP3','AP4']
+}
 
 class Bins():
     """库位管理"""
@@ -34,7 +51,8 @@ class Bins():
         self.bindata = namedtuple('bindata', ['name', 'goodsType', 'lockId', 'autoAddType', 'autoClearType', 'changeSt',
                                               'autoInterval'])
         self.binarea = self.init_area(data)  # 库区信息 {"area_name":{bin_list:[],index:0}}  # index 记录遍历位置
-        self.core = CoreUtil()
+        # self.core = CoreUtil()
+        self.core = None
         self.normal_area = {}
         self.predata = {}
 
@@ -210,7 +228,8 @@ class Business:
         self.vehicle_dict = {vehicle: {} for vehicle in vehicles}  # {name:{cid:gid}}
         self.runing = [(0, 0, 0) for i in range(self.const_output)]  # 正在执行的运单  (oid,area,index)
         self.mode = mode
-        self.core = CoreUtil()
+        # self.core = CoreUtil()
+        self.core = None
 
     async def perform_task_load_box(self, from_points=None):
         """料箱车取货运单"""
@@ -274,37 +293,35 @@ class Business:
         :return:
         """
         # 指定了区域中具体的取货地点，说明是设备触发的业务，运行次数由传过来的from_appoints的长度决定
-        if len(from_appoints) > 0:
-            # 判断库位状态 为 有货 且 货物type为 self.goods_type【加一层判断更安全】
-            if self.bins.binarea[self.from_regions]['bin_list'][from_appoints[1]].goodsType == self.goods_type:
-                pass
-
+        if from_appoints is not None and len(from_appoints) > 0:
+            from_index = 0
+            if self.from_index is not None:
+                from_index = self.from_index
+            # 判断库位状态 为 有货 且 货物type为 self.load_type【加一层判断更安全】   并且库位没有被锁定
+            if self.bins.binarea[self.region_area[from_index]]['bin_list'][from_appoints[0]].goodsType == self.goods_type and \
+            self.bins.binarea[self.region_area[from_index]]['bin_list'][from_appoints[0]].lockId == 0:
+                area_list = self.region_area
+                area_list[from_index] = [self.bins.binarea[area_list[from_index]]['bin_list'][from_appoints[0]].name]
+                asyncio.create_task(self.trace_block(area_list))
             return
         # 指定了区域中具体的放货地点，说明是设备触发的业务，运行次数由传过来的to_appoints的长度决定
-        if len(to_appoints):
+        if to_appoints is not None  and len(to_appoints) > 0:
             # 判断库位状态 为 有货 且 货物type为 0【加一层判断更安全】
-            if self.bins.binarea[self.to_regions]['bin_list'][to_appoints[1]].goodsType == 0:
-                pass
+            to_index = 1
+            if self.to_index is not None:
+                to_index = self.to_index
+            if self.bins.binarea[self.region_area[to_index]]['bin_list'][to_appoints[0]].goodsType == 0 and \
+            self.bins.binarea[self.region_area[to_index]]['bin_list'][to_appoints[0]].lockId == 0:
+                area_list = self.region_area
+                area_list[to_index] = [self.bins.binarea[area_list[to_index]]['bin_list'][to_appoints[0]].name]
+                asyncio.create_task(self.trace_block(area_list))
             return
         # 非设备触发的业务
         while True:
             to_send = self.const_output - sum((0 for i in self.runing if i[0] == 0))
             for i in range(to_send):
-                # 生成oid = 'bus' + 1234 + 'type' + 1 + xxxxxxxx
-                oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
-                # 选取库位 - 要连续选两个库位
-                # 取货库位
-                pos1, pos_index1 = await self.bins.choose_pos(area_name=self.from_regions, state=self.goods_type,
-                                                              lockId=oid)
-                # 放货库位
-                pos2, pos_index2 = await self.bins.choose_pos(area_name=self.to_regions, state=0,
-                                                              lockId=oid)
-                if pos1 and pos2:
-                    print(f"Business {self.business_id}:load {pos1}")
-                else:
-                    # print(f"Business {self.business_id}:can not find load pos,no goodsType: {self.goods_type}")
-                    # 要不要break TODO：
-                    break
+                # 发单去
+                asyncio.create_task(self.trace_block(self.region_area))
                 # 让出CPU
                 await asyncio.sleep(0)
             # 等待下一个搬运周期
@@ -312,6 +329,7 @@ class Business:
 
     async def trace_block(self, area_list=None):
         """"""
+        print(area_list)
         pass
 
 
@@ -413,7 +431,7 @@ class EL():
                         self.bins.binarea[self.power.from_area]['bin_list'][value] = \
                             self.bins.binarea[self.power.from_area]['bin_list'][value]._replace(goodsType=0)
                         # 触发业务过来放货
-                        self.power.bus_from.perform_task_box(to_appoints=self.power.teleportFrom)
+                        asyncio.create_task(self.power.bus_from.perform_task(to_appoints=[value]))
                         # 库位中存在有货库位
                         teleport_flg = False
                         break
@@ -421,8 +439,8 @@ class EL():
                     # 代码能走到这里，说明设备空闲的，但没有找到库位去取货，触发业务过来放货
                     tasks = []
                     for key, value in self.power.teleportFrom.items():
-                        appoints = [key, value]
-                        task = asyncio.create_task(self.power.bus_from.perform_task_box(to_appoints=appoints))
+                        appoints = [value]
+                        task = asyncio.create_task(self.power.bus_from.perform_task(to_appoints=appoints))
                         tasks.append(task)
                     # 这里是需要等待至少有一个业务补货完成再继续运功设备
                     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -442,15 +460,15 @@ class EL():
                         # 加工结束
                         self.power = self.power._replace(state=0)
                         # 出发业务把货拿走
-                        self.power.bus_to.perform_task_box(from_appoints=self.power.teleportTo)
+                        asyncio.create_task(self.power.bus_to.perform_task(from_appoints=[value]))
                         teleport_flg = False
                         break
                 if teleport_flg:
                     # 代码能走到这里，说明设备没有找到库位去放货，触发业务过来取货
                     tasks = []
                     for key, value in self.power.teleportTo.items():
-                        appoints = [key, value]
-                        task = asyncio.create_task(self.power.bus_from.perform_task_box(from_appoints=appoints))
+                        appoints = [value]
+                        task = asyncio.create_task(self.power.bus_from.perform_task(from_appoints=appoints))
                         tasks.append(task)
                     # 这里是需要等待至少有一个业务补货完成再继续运功设备
                     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -496,9 +514,12 @@ async def main():
     # 初始化发单系统
     test_data1 = {'A': buss_area.get("A")}
     test_data2 = {'B': buss_area.get("B")
+                 }
+    test_data3 = {'C': buss_area.get("C")
+                  }
+    test_data4 = {'D': buss_area.get("D")
                   }
     bins = Bins()
-    core = CoreUtil()
     order_system = OrderSystem(bins=bins)
     vehicles = [f"AMB-0{i}" for i in range(1, 7)]
     for i in vehicles:
@@ -528,25 +549,30 @@ async def main():
     # })
     bins.update_area(test_data1, autoAddType=1, autoClearType=1, ifrandom=True)
     bins.update_area(test_data2, autoAddType=1, autoClearType=1, ifrandom=True)
+    bins.update_area(test_data3, autoAddType=1, autoClearType=1, ifrandom=True)
+    bins.update_area(test_data4, autoAddType=1, autoClearType=1, ifrandom=True)
     # 设备绑定的点位A
-    teleportFrom = ['AP774', 'AP776']
+    teleport_from = ['AP774', 'AP776']
     # 设备绑定的点位B
-    teleportTo = ['AP940', 'AP1351']
+    teleport_to = ['AP940', 'AP1351']
     # A
 
     # 1 到 2，运货
-    business1 = Business(business_id=1, from_regions="A", to_regions="B", interval=5, const_output=500,
-                         bins=bins, vehicles=vehicles, load_type=1, core=core)
+    # bus_data =
+    business1 = Business(business_id=1,region_area=["C","A"], interval=5, const_output=500,
+                         bins=bins,vehicles=vehicles,goods_type=1)
+    business2 = Business(business_id=1, region_area=["B", "D"], interval=5, const_output=500,
+                         bins=bins, vehicles=vehicles, goods_type=1)
     data = {
         "name": '01',
-        "teleport_from": teleportFrom,
-        "teleport_to": teleportTo,
+        "teleport_from": teleport_from,
+        "teleport_to": teleport_to,
         "origin_type": 1,
         "final_type": 2,
         "from_area": 'A',
         "to_area": "B",
         "bus_from": business1,
-        "bus_to": business1,
+        "bus_to": business2,
         "working_time": 18,
         "changeSt": 0,
         "state": 0
