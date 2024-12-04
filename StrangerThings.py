@@ -2,16 +2,9 @@
 import json
 import sys
 import os
-from mimetypes import inited
+# from mimetypes import inited
 from typing import Union
-
 from pkg_resources import NoDists
-
-p = os.path.abspath(__file__)
-p = os.path.dirname(p)
-p = os.path.dirname(p)
-p = os.path.dirname(p)
-sys.path.append(p)
 try:
     import asyncio
     import random
@@ -25,6 +18,8 @@ try:
     from CoreUtils import CoreUtil
 except Exception as e:
     print(e)
+
+core=None
 
 buss_area2={
       'A':{'AP774': 'LM1194', 'AP896': 'LM1193', 'AP776': 'LM1192', 'AP897': 'LM1191', 'AP777': 'LM1190',
@@ -42,6 +37,21 @@ buss_area={
       'D':['AP3','AP4']
 }
 
+# 测试的部分点位
+weihai_binarea={'A': ['AP416', 'AP415', 'AP412', 'AP413'],
+                'B': ['AP273', 'AP271', 'AP270', 'AP272', 'AP269'],
+                'C': ['AP234', 'AP231', 'AP239', 'AP236', 'AP233', 'AP238', 'AP240', 'AP235', 'AP237', 'AP232'],
+                'D': ['AP188', 'AP139', 'AP221', 'AP186', 'AP192', 'AP230', 'AP171']}
+
+weihai_normalarea={'A': {'AP415': 'LM490', 'AP412': 'LM489', 'AP413': 'LM491', 'AP416': 'LM492'},
+                   'B': {'AP272': 'LM621', 'AP271': 'LM620', 'AP269': 'LM618', 'AP270': 'LM619', 'AP273': 'LM622'},
+                   'C': {'AP233': 'LM796', 'AP232': 'LM795', 'AP239': 'LM783', 'AP240': 'LM782', 'AP236': 'LM780',
+                                          'AP238': 'LM779', 'AP231': 'LM794', 'AP237': 'LM781', 'AP234': 'LM797', 'AP235': 'LM798'},
+                   'D': {'AP186': 'LM831', 'AP230': 'LM834', 'AP139': 'LM833', 'AP192': 'LM835', 'AP171': 'LM832', 'AP221': 'LM830', 'AP188': 'LM829'}}
+
+
+
+
 class Bins():
     """库位管理"""
 
@@ -51,8 +61,7 @@ class Bins():
         self.bindata = namedtuple('bindata', ['name', 'goodsType', 'lockId', 'autoAddType', 'autoClearType', 'changeSt',
                                               'autoInterval'])
         self.binarea = self.init_area(data)  # 库区信息 {"area_name":{bin_list:[],index:0}}  # index 记录遍历位置
-        # self.core = CoreUtil()
-        self.core = None
+        self.core = CoreUtil()
         self.normal_area = {}
         self.predata = {}
 
@@ -149,6 +158,86 @@ class Bins():
                 continue
             return False, False
 
+    async def choose_pos2(self, area_name, state, lockId) -> tuple:
+        """"""
+        while True:
+            pos,index=await self.choose_pos(area_name, state, lockId)
+            if pos:
+                return pos,index
+            else:
+                await asyncio.sleep(1)
+
+    def if_avilable(self,area_name=None):
+        """是否可以不去Fixpoint"""
+        pass
+        return False
+    async def get_sequence_pos(self,area_list:list,state:int,oid:str,load_index,unload_index,mode,region):
+        """
+        返回点位数据，
+        取货分为两个过程，取货过程为第0个点到取货点
+        第一次需要返回loadpos作为调度的keyroute，
+
+        :param area_list:
+        :param state:
+        :param oid:
+        :return:
+        """
+        index=0
+        keypos=None
+        for a in area_list:
+            if index==0 or index==load_index+1:
+                if isinstance(area_list[load_index],str):
+                    keypos,*_=await self.choose_pos2(area_list[load_index],state,oid)
+                else:
+                    keypos=area_list[load_index][0]
+                    self.just_lock(region[unload_index], a[1], oid)
+                if index==0:
+                    yield keypos
+            if isinstance(a, str):
+                if self.binarea.get(a):
+                    # 是库位
+                    if index==load_index:
+                        if mode==0:
+                            yield keypos
+                        if mode==1:
+                            yield self.predata[keypos],keypos
+                        if mode==2:
+                            yield self.predata[keypos],keypos,self.predata[keypos]
+                        step=1
+                    elif index==unload_index:
+                        if mode==0:
+                            yield keypos
+                        if mode==1:
+                            yield self.predata[keypos],keypos
+                        if mode==2:
+                            yield self.predata[keypos],keypos,self.predata[keypos]
+                elif self.normal_area.get(a):
+                    if self.if_avilable():
+                        yield None
+                    else:
+                        yield random.choice(self.normal_area.get(a))
+            else: # tuple
+                if index == load_index:
+                    self.just_lock(region[load_index],a[1],oid)
+                    if mode == 0:
+                        yield a[0]
+                    if mode == 1:
+                        yield self.predata[a[0]],a[0]
+                    if mode == 2:
+                        yield self.predata[a[0]],a[0],self.predata[a[0]]
+                elif index == unload_index:
+                    self.just_lock(region[unload_index],a[1],oid)
+                    if mode == 0:
+                        yield a[0]
+                    if mode == 1:
+                        yield self.predata[a[0]], a[0]
+                    if mode == 2:
+                        yield self.predata[a[0]], a[0], self.predata[a[0]]
+                else:
+                    yield a[0]
+            index+=1
+
+
     async def release_bins(self):
         """
         运单完成后释放库位
@@ -164,17 +253,14 @@ class Bins():
                     i, op, state, oid = next(gen)
                     if i != -1:
                         async with self.semaphores[area]:
-                            if state == "STOPPED":
-                                self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(lockId=0)
-                            else:
-                                if op == "load":
-                                    self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(
-                                        goodsType=0, lockId=0, changeSt=time.time())
-                                elif op == "unload":
-                                    type = oid.split('type')[1].split('end')[0]
-                                    self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(
-                                        goodsType=oid, lockId=0,
-                                        changeSt=time.time())
+                            if op == "load":
+                                self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(
+                                    goodsType=0, lockId=0, changeSt=time.time())
+                            elif op == "unload":
+                                type = oid.split('type')[1].split('end')[0]
+                                self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(
+                                    goodsType=oid, lockId=0,
+                                    changeSt=time.time())
                     else:
                         flag = True
                 except StopIteration:
@@ -207,12 +293,12 @@ class Bins():
 class Business:
     """业务"""
 
-    def __init__(self, business_id: int, region_area: list[str], bins: Bins, vehicles: list, goods_type: int,
+    def __init__(self, business_id: int, region_area: list[str], bins: Bins, vehicles: list=None, goods_type: int=0,
                  from_index: Union[int, str] = 0, to_index: Union[int, str] = 1, group=None, interval=1, const_output=1,
                  mode=0):
         """
         :param business_id: 业务id
-        :param region_area: 搬运取货区域
+        :param region_area: 搬运区域
         :param from_index: 取货区域
         :param to_index: 取货区域
         :param bins: 库区对象
@@ -232,42 +318,37 @@ class Business:
         self.goods_type = goods_type
         self.const_output = const_output
         self.group = group
-        self.vehicle_dict = {vehicle: {} for vehicle in vehicles}  # {name:{cid:gid}}
+        self.vehicle_dict = None if vehicles is None else {vehicle: {} for vehicle in vehicles}  # {name:{cid:gid}}
         self.runing = [(0, 0, 0) for i in range(self.const_output)]  # 正在执行的运单  (oid,area,index)
         self.mode = mode
-        # self.core = CoreUtil()
-        self.core = None
+        self.core = CoreUtil()
+        self.operationArgs={}
+        # self.core = None
 
-    async def perform_task_load_box(self, from_points=None):
+    async def perform_task_load_box(self):
         """料箱车取货运单"""
-        if from_points:
-            # 设备发的取货
-            oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
-            pos = await self.bins.just_lock(*from_points, oid)
-            self.core.setShareOrder(oid=oid, loc=pos, operation='load', keytask='load', GoodsType=self.goods_type)
-        else:
-            while True:
-                # 等待库位资源
-                to_send = self.const_output - sum((0 for i in self.runing if i[0] == 0))
-                for i in range(to_send):
-                    # 选取 load点 ;oid = 'bus' + 1234 + 'type' + {goods_type} +end +xxxxxxxx
-                    oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
-                    pos, pos_index = await self.bins.choose_pos(area_name=self.region_area[self.from_index],
-                                                                state=self.goods_type, lockId=oid)
-                    if pos:
-                        print(f"Business {self.business_id}:load {pos}")
-                        self.core.setShareOrder(oid=oid, loc=pos, operation='load', keytask='load',
-                                                GoodsType=self.goods_type)
-                    else:
-                        # print(f"Business {self.business_id}:can not find load pos")
-                        break
-                    # 让出控制权
-                    await asyncio.sleep(0)
+        while True:
+            # 等待库位资源
+            to_send = self.const_output - sum((0 for i in self.runing if i[0] == 0))
+            for i in range(to_send):
+                # 选取 load点 ;oid = 'bus' + 1234 + 'type' + {goods_type} +end +xxxxxxxx
+                oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
+                pos, pos_index = await self.bins.choose_pos(area_name=self.region_area[self.from_index],
+                                                            state=self.goods_type, lockId=oid)
+                if pos:
+                    print(f"Business {self.business_id}:load {pos}")
+                    self.core.setShareOrder(oid=oid, loc=pos, operation='load', keytask='load',
+                                            GoodsType=self.goods_type)
+                else:
+                    # print(f"Business {self.business_id}:can not find load pos")
+                    break
+                # 让出控制权
+                await asyncio.sleep(0)
 
-                # 等待下一个搬运周期
-                await asyncio.sleep(self.interval)
+            # 等待下一个搬运周期
+            await asyncio.sleep(self.interval)
 
-    async def perform_task_unload_box(self, form_points=None, to_points=None):
+    async def perform_task_unload_box(self):
         """每隔设定的时间间隔执行一次搬运操作"""
         while True:
             # 查询机器人是否有新的完成
@@ -279,8 +360,8 @@ class Business:
                             continue
                         else:
                             c[container["container_name"]] = container["goods_id"]
-                            oid = self.business_id + str(uuid.uuid4())
-                            pos, pos_index = await self.bins.choose_pos(area_name=self.to_regions, state=0, lockId=oid)
+                            oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
+                            pos, pos_index = await self.bins.choose_pos(area_name=self.region_area[self.to_index], state=0, lockId=oid)
                             if pos:
                                 print(f"Business {self.business_id}:unload {pos}")
                                 if container['container_name'] == '999':
@@ -291,6 +372,56 @@ class Business:
                                     self.core.setShareOrder(oid=oid, vehicle=v, operation='unload',
                                                             goodsId=container['goods_id'], loc=pos)
             await asyncio.sleep(1)
+
+    async def perform_task_box(self,from_points=None,to_points=None):
+        """由设备触发的料箱车取货运单"""
+        oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
+        if from_points:
+            pos=await self.bins.just_lock(self.region_area[self.from_index],from_points,oid)
+            self.core.setShareOrder(oid=oid, loc=pos, operation='load', keytask='load',
+                                    GoodsType=self.goods_type)
+        else:
+            while True:
+                pos, pos_index = await self.bins.choose_pos(area_name=self.region_area[self.from_index],
+                                                            state=self.goods_type, lockId=oid)
+                if pos:
+                    self.core.setShareOrder(oid=oid, loc=pos, operation='load', keytask='load',
+                                            GoodsType=self.goods_type)
+                    break
+                await asyncio.sleep(1)
+        while True:
+            # 查询机器人是否有新的完成
+            for v, c in self.vehicle_dict.items():
+                for container in self.core.get_contaioners_data(v):
+                    if container['goods_id']==oid:
+                        oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
+                        if to_points:
+                            pos = await self.bins.just_lock(self.to_area[self.to_index], to_points, oid)
+                            if container['container_name'] == '999':
+                                self.core.setShareOrder(oid=oid, vehicle=v, operation='unload',
+                                                        keyGoodsID=container['goods_id'],
+                                                        loc=pos)
+                            else:
+                                self.core.setShareOrder(oid=oid, vehicle=v, operation='unload',
+                                                        goodsId=container['goods_id'], loc=pos)
+                        else:
+                            while True:
+                                pos, pos_index = await self.bins.choose_pos(area_name=self.region_area[self.to_index],
+                                                                            state=0, lockId=oid)
+                                if pos:
+                                    print(f"Business {self.business_id}:unload {pos}")
+                                    if container['container_name'] == '999':
+                                        self.core.setShareOrder(oid=oid, vehicle=v, operation='unload',
+                                                                keyGoodsID=container['goods_id'],
+                                                                loc=pos)
+                                    else:
+                                        self.core.setShareOrder(oid=oid, vehicle=v, operation='unload',
+                                                                goodsId=container['goods_id'], loc=pos)
+                                    break
+                                await asyncio.sleep(1)
+                        break
+            await asyncio.sleep(1)
+
 
     async def perform_task(self, from_appoints=None, to_appoints=None):
         """
@@ -334,10 +465,70 @@ class Business:
             # 等待下一个搬运周期
             await asyncio.sleep(self.interval)
 
+
     async def trace_block(self, area_list=None):
         """"""
-        print(area_list)
-        pass
+        loadx,unloadx=self.from_index,self.to_index
+        oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
+        count=0
+        keypos=None
+        for pos in self.bins.get_sequence_pos(area_list,self.goods_type,oid,self.from_index,self.to_index,self.mode,self.region_area):
+            if count==0 or count==loadx:
+                keypos=pos
+                oid = self.core.setOrder(oid, keyTask="load",keyRoute=pos,group=self.group,complete=False)
+                continue
+            current_s=await self.core.waitState(oid)
+            if current_s==0:
+                if isinstance(pos,str):
+                    if count == loadx:
+                        self.core.addBlock(oid,oid+f":{count}",location=pos,operation='ForkLoad',operationArgs=self.operationArgs)
+                    elif count == unloadx:
+                        self.core.addBlock(oid, oid + f":{count}", location=pos, operation='ForkUnload',
+                                           operationArgs=self.operationArgs)
+                elif isinstance(pos,tuple):
+                    if count==loadx:
+                        if self.mode==1:
+                            self.core.addBlock(oid, oid + f":{count}", location=pos[0], operation='ForkHeight')
+                            current_s = await self.core.waitState(oid)
+                            if current_s==0:
+                                self.core.addBlock(oid, oid + f":{count}", location=pos[0], operation='ForkLoad')
+                            elif current_s > 1:
+                                break
+                        if self.mode==2:
+                            self.core.addBlock(oid, oid + f":{count}", location=pos[0], operation='ForkHeight')
+                            current_s = await self.core.waitState(oid)
+                            if current_s == 0:
+                                self.core.addBlock(oid, oid + f":{count}", location=pos[1], operation='ForkLoad')
+                                current_s = await self.core.waitState(oid)
+                                if current_s == 0:
+                                    self.core.addBlock(oid, oid + f":{count}", location=pos[2], operation='ForkHeight')
+                                else:
+                                    break
+                            else:
+                                break
+                    elif count==unloadx:
+                        if self.mode==1:
+                            self.core.addBlock(oid, oid + f":{count}", location=pos[0], operation='ForkHeight')
+                            current_s = await self.core.waitState(oid)
+                            if current_s==0:
+                                self.core.addBlock(oid, oid + f":{count}", location=pos[0], operation='ForkUnoad')
+                            elif current_s > 1:
+                                break
+                        if self.mode==2:
+                            self.core.addBlock(oid, oid + f":{count}", location=pos[0], operation='ForkHeight')
+                            current_s = await self.core.waitState(oid)
+                            if current_s == 0:
+                                self.core.addBlock(oid, oid + f":{count}", location=pos[1], operation='ForkUload')
+                                current_s = await self.core.waitState(oid)
+                                if current_s == 0:
+                                    self.core.addBlock(oid, oid + f":{count}", location=pos[2], operation='ForkHeight')
+                                else:
+                                    break
+                            else:
+                                break
+            else:
+                break
+
 
 
 class EL():
@@ -346,7 +537,7 @@ class EL():
     """
     gifted_counter = 0
 
-    def __init__(self, vehicles, bins, data=None):
+    def __init__(self, bins, vehicles=None,data=None):
         """
 
         :param vehicles:
@@ -371,7 +562,7 @@ class EL():
                                               ['name', 'teleportFrom', 'teleportTo', 'originType', 'finalType',
                                                'from_area', 'to_area', 'bus_from', 'bus_to', 'workingTime', 'changeSt',
                                                'state'])
-        self.vehicle_dict = {vehicle: {} for vehicle in vehicles}
+        self.vehicle_dict = None if vehicles is None else {vehicle: {} for vehicle in vehicles}
         self.power = self.init_area(data)
         self.bins = bins
         EL.gifted_counter += 1
@@ -513,74 +704,138 @@ class OrderSystem:
         await asyncio.gather(*tasks)
 
 
+# async def main():
+#     # 初始化发单系统
+#     test_data1 = {'A': buss_area.get("A")}
+#     test_data2 = {'B': buss_area.get("B")
+#                  }
+#     test_data3 = {'C': buss_area.get("C")
+#                   }
+#     test_data4 = {'D': buss_area.get("D")
+#                   }
+#     bins = Bins()
+#     order_system = OrderSystem(bins=bins)
+#     vehicles = [f"AMB-0{i}" for i in range(1, 7)]
+#     for i in vehicles:
+#         # clear containers
+#         requests.post(url=f'{cg.ip}/clearAllContainersGoods', json={"vehicle": i})
+#         # 机器人行驶速度 + 模拟充电
+#         res = requests.post(cg.ip + '/updateSimRobotState', json={
+#             "vehicle_id": i,
+#             "rotate_speed": 30,
+#             "speed": 1,
+#             "battery_percentage": 1,
+#             # "charge_speed":0.005,
+#             # "enable_battery_consumption":True,
+#             # "no_task_battery_consumption": 0.05,
+#             # "task_battery_consumption":0.35
+#         })
+#     # core_utils = CoreUtil()
+#     # core_utils.set_operation_time(vehicles,operation='script', t = 18)
+#     # core_utils.modifyParamNew(data={
+#     #     "RDSDispatcher":{
+#     #         "MovableParkInPath":True,
+#     #         "AutoMovablePark":True,
+#     #         "ParkingRobotMoveOthers":True,
+#     #         "AutoPark":True,
+#     #         "DelayFinishTime":0
+#     #     }
+#     # })
+#     bins.update_area(test_data1, autoAddType=1, autoClearType=1, ifrandom=True)
+#     bins.update_area(test_data2, autoAddType=1, autoClearType=1, ifrandom=True)
+#     bins.update_area(test_data3, autoAddType=1, autoClearType=1, ifrandom=True)
+#     bins.update_area(test_data4, autoAddType=1, autoClearType=1, ifrandom=True)
+#     # 设备绑定的点位A
+#     teleport_from = ['AP774', 'AP776']
+#     # 设备绑定的点位B
+#     teleport_to = ['AP940', 'AP1351']
+#     # A
+#
+#     # 1 到 2，运货
+#     # bus_data =
+#     business1 = Business(business_id=1,region_area=["C","A"], interval=5, const_output=500,
+#                          bins=bins,vehicles=vehicles,goods_type=1)
+#     business2 = Business(business_id=1, region_area=["B", "D"], interval=5, const_output=500,
+#                          bins=bins, vehicles=vehicles, goods_type=1)
+#     data = {
+#         "name": '01',
+#         "teleport_from": teleport_from,
+#         "teleport_to": teleport_to,
+#         "origin_type": 1,
+#         "final_type": 2,
+#         "from_area": 'A',
+#         "to_area": "B",
+#         "bus_from": business1,
+#         "bus_to": business2,
+#         "working_time": 18,
+#         "changeSt": 0,
+#         "state": 0
+#     }
+#     el = EL(vehicles=vehicles, bins=bins, data=data)
+#     await el.get_through()
+#     # 创建多个业务，每个业务都有不同的搬运周期
+#     # # 1 到 2，运货
+#     # business1 = Business(business_id=1, from_regions="area1", to_regions="area2", interval=5, const_output=500,
+#     #                      bins=bins,vehicles=vehicles,type=1)
+#     # # 2 到 3 运货
+#     # business2 = Business(business_id=2, from_regions="area2", to_regions="area3", interval=5, const_output=500,
+#     #                      bins=bins,vehicles=vehicles,type=1)
+#     # # 3 到 2 运空箱
+#     # business3 = Business(business_id=3, from_regions="area3", to_regions="area2", interval=5, const_output=500,
+#     #                      bins=bins, vehicles=vehicles,type=2)
+#     # # 2 到 1 运空箱
+#     # business4 = Business(business_id=4, from_regions="area2", to_regions="area1", interval=5, const_output=500,
+#     #                      bins=bins, vehicles=vehicles,type=2)
+#     #
+#     # # 将所有业务添加到系统中
+#     # order_system.add_business(business1)
+#     # order_system.add_business(business2)
+#     # order_system.add_business(business3)
+#     # order_system.add_business(business4)
+#     # # 启动发单系统
+#     # await order_system.run()
+
+
+# 叉车逻辑测试
 async def main():
     # 初始化发单系统
-    test_data1 = {'A': buss_area.get("A")}
-    test_data2 = {'B': buss_area.get("B")
-                 }
-    test_data3 = {'C': buss_area.get("C")
-                  }
-    test_data4 = {'D': buss_area.get("D")
-                  }
+    test_data1 = {'A': weihai_binarea.get("A")}
+    test_data2 = {'B': weihai_binarea.get("B")}
+    test_data3 = {'C': weihai_binarea.get("C")}
+    test_data4 = {'D': weihai_binarea.get("D")}
     bins = Bins()
     order_system = OrderSystem(bins=bins)
-    vehicles = [f"AMB-0{i}" for i in range(1, 7)]
-    for i in vehicles:
-        # clear containers
-        requests.post(url=f'{cg.ip}/clearAllContainersGoods', json={"vehicle": i})
-        # 机器人行驶速度 + 模拟充电
-        res = requests.post(cg.ip + '/updateSimRobotState', json={
-            "vehicle_id": i,
-            "rotate_speed": 30,
-            "speed": 1,
-            "battery_percentage": 1,
-            # "charge_speed":0.005,
-            # "enable_battery_consumption":True,
-            # "no_task_battery_consumption": 0.05,
-            # "task_battery_consumption":0.35
-        })
-    # core_utils = CoreUtil()
-    # core_utils.set_operation_time(vehicles,operation='script', t = 18)
-    # core_utils.modifyParamNew(data={
-    #     "RDSDispatcher":{
-    #         "MovableParkInPath":True,
-    #         "AutoMovablePark":True,
-    #         "ParkingRobotMoveOthers":True,
-    #         "AutoPark":True,
-    #         "DelayFinishTime":0
-    #     }
-    # })
-    bins.update_area(test_data1, autoAddType=1, autoClearType=1, ifrandom=True)
-    bins.update_area(test_data2, autoAddType=1, autoClearType=1, ifrandom=True)
-    bins.update_area(test_data3, autoAddType=1, autoClearType=1, ifrandom=True)
-    bins.update_area(test_data4, autoAddType=1, autoClearType=1, ifrandom=True)
+    bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
+    bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
+    bins.update_area(test_data3, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=30)
+    bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
     # 设备绑定的点位A
-    teleport_from = ['AP774', 'AP776']
+    teleport_from = ['AP238', 'AP236']
     # 设备绑定的点位B
-    teleport_to = ['AP940', 'AP1351']
+    teleport_to = ['AP231', 'AP232']
     # A
 
     # 1 到 2，运货
     # bus_data =
-    business1 = Business(business_id=1,region_area=["C","A"], interval=5, const_output=500,
-                         bins=bins,vehicles=vehicles,goods_type=1)
-    business2 = Business(business_id=1, region_area=["B", "D"], interval=5, const_output=500,
-                         bins=bins, vehicles=vehicles, goods_type=1)
+    business1 = Business(business_id=1,region_area=["B","C"], interval=5,
+                         bins=bins,group="CDD14",goods_type=1)
+    business2 = Business(business_id=2, region_area=["C", "D"], interval=5,
+                         bins=bins, group="CDD14", goods_type=1)
     data = {
         "name": '01',
         "teleport_from": teleport_from,
         "teleport_to": teleport_to,
         "origin_type": 1,
         "final_type": 2,
-        "from_area": 'A',
-        "to_area": "B",
+        "from_area": 'C',
+        "to_area": "C",
         "bus_from": business1,
         "bus_to": business2,
         "working_time": 18,
         "changeSt": 0,
-        "state": 0
+        "state": 1
     }
-    el = EL(vehicles=vehicles, bins=bins, data=data)
+    el = EL(bins=bins, data=data)
     await el.get_through()
     # 创建多个业务，每个业务都有不同的搬运周期
     # # 1 到 2，运货
@@ -603,6 +858,7 @@ async def main():
     # order_system.add_business(business4)
     # # 启动发单系统
     # await order_system.run()
+
 
 
 if __name__ == "__main__":
