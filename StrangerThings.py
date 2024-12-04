@@ -184,6 +184,13 @@ class Bins():
             await asyncio.sleep(1)
 
     async def change_state(self, area, index, goodsType):
+        """
+        修改指定库位状态
+        :param area: 区域名
+        :param index: 区域中第几个库位
+        :param goodsType: 更改后库位状态
+        :return:
+        """
         async with self.semaphores[area]:
             self.binarea[area]['bin_list'][index] = self.binarea[area]['bin_list'][index]._replace(goodsType=goodsType,
                                                                                                    lockId=0,
@@ -427,9 +434,8 @@ class EL():
                     if self.bins.binarea[self.power.from_area]['bin_list'][value].goodsType == self.power.originType:
                         # 将设备设为正在加工货物
                         self.power = self.power._replace(state=1, changeSt=time.time())
-                        # 将库位设为空 - 货物这会在设备上 TODO:修改为调用方法
-                        self.bins.binarea[self.power.from_area]['bin_list'][value] = \
-                            self.bins.binarea[self.power.from_area]['bin_list'][value]._replace(goodsType=0)
+                        # 将库位设为空 - 货物这会在设备上
+                        self.bins.change_state(self.power.from_area,value,0)
                         # 触发业务过来放货
                         asyncio.create_task(self.power.bus_from.perform_task(to_appoints=[value]))
                         # 库位中存在有货库位
@@ -453,10 +459,7 @@ class EL():
                 # 获取放置目标库位
                 for key, value in self.power.teleportTo.items():
                     if self.bins.binarea[self.power.to_area]['bin_list'][value].goodsType == 0:
-                        # TODO:修改为调用方法
-                        self.bins.binarea[self.power.to_area]['bin_list'][value] = \
-                            self.bins.binarea[self.power.to_area]['bin_list'][value]._replace(
-                                goodsType=self.power.finalType)
+                        self.bins.change_state(self.power.to_area,value,self.power.finalType)
                         # 加工结束
                         self.power = self.power._replace(state=0)
                         # 出发业务把货拿走
