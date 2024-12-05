@@ -16,23 +16,24 @@ class CoreUtil(metaclass=SingletonMetaClass):
     def __init__(self,ip:str=""):
         """"""
         print("init coreUtil")
-        # self.ip = cg.ip if ip is None else ip
-        self.ip = "http://127.0.0.1:8088"
+        self.ip = cg.ip if not ip else ip
     def getOrderState(self,oid):
         """查询运单状态，返回状态和动作"""
         r = requests.get(self.ip + "/orderDetails/" + oid).json()
-        return r.get('state'), r.get('keyTask'),r.get('blocks')[-1]['blockId']
+        return r.get('state'), r.get('keyTask'),None if not r.get('blocks') else r.get('blocks')[-1]['blockId']
 
     async def waitState(self,oid):
         """状态waiting返回True，终态返回False"""
         while True:
-            state,*_ = self.getOrderState(oid)
+            state,_,bid= self.getOrderState(oid)
             if state == "WAITING":
                 return 0
             elif state=="FINISHED":
                 return 1
             elif state=="STOPPED":
                 return 2
+            elif state=="TOBEDISPATCHED" and bid is None:
+                return 3
             await asyncio.sleep(1)
 
     def setShareOrder(self, **kwargs) -> str:
@@ -127,7 +128,7 @@ class CoreUtil(metaclass=SingletonMetaClass):
         r = requests.post(self.ip+"/saveCoreParam", json = data)
         print(r.content)
 
-    def setOrder(self, oid=None,vehicle="",location=None,complete="",group="",keyTask="",keyRoute="",operation=""):
+    def setOrder(self, oid=None,vehicle="",location=None,complete=True,group="",keyTask="",keyRoute="",operation=""):
         if oid is None:
             oid = str(uuid.uuid4())
         if location != None:
@@ -137,7 +138,6 @@ class CoreUtil(metaclass=SingletonMetaClass):
                         {
                             "blockId": oid + ":0",
                             "location": location,
-                            "binTask": ("" if type(binTask) is not str else binTask),
                             "operation": ("" if type(operation) is not str else operation),
                         }
                     ],
@@ -161,7 +161,9 @@ class CoreUtil(metaclass=SingletonMetaClass):
                     "keyTask": ("" if type(keyTask) is not str else keyTask),
                 }
             )
+        print(self.ip + "/setOrder")
         r = requests.post(self.ip + "/setOrder", data=datas)
+        print("set_Order",r.json())
         return oid
 
     def addBlock(self, orderId=None, blockId=None,location=None,

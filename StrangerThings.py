@@ -90,7 +90,7 @@ class Bins():
                     yield index, op, state, oid  # 找到目标元素，返回当前索引
             index += 1
 
-    async def update_area(self, data, goodsType=0, autoAddType=0, autoClearType=0, autoInterval=0, ifrandom=False,
+    def update_area(self, data, goodsType=0, autoAddType=0, autoClearType=0, autoInterval=0, ifrandom=False,
                     randomTuple=(0, 1)):
         """
         literal meaning
@@ -110,7 +110,7 @@ class Bins():
                                      autoInterval))
                 else:
                     self.binarea.setdefault(name, {}).setdefault('bin_list', []).append(
-                        self.bindata(loc, random.choice(randomTuple), 0, autoAddType, autoClearType, time.time(),
+                        self.bindata(loc, goodsType, 0, autoAddType, autoClearType, time.time(),
                                      autoInterval))
             self.binarea.setdefault(name, {}).setdefault('index', 0)
         return True
@@ -149,8 +149,8 @@ class Bins():
                                 self.binarea[area_name]['bin_list'][(i + offect) % area_len]._replace(goodsType=state,
                                                                                                       lockId=lockId)
                             self.binarea[area_name]['index'] = (i + offect) % area_len
-                            return bin.bin, (i + offect) % area_len
-                    if state == bin.hasGoods:
+                            return bin.name, (i + offect) % area_len
+                    if state == bin.goodsType:
                         self.binarea[area_name]['bin_list'][(i + offect) % area_len] = \
                             self.binarea[area_name]['bin_list'][(i + offect) % area_len]._replace(lockId=lockId)
                         self.binarea[area_name]['index'] = (i + offect) % area_len
@@ -190,7 +190,7 @@ class Bins():
                     keypos,*_= await self.choose_pos2(area_list[load_index],state,oid)
                 else:
                     keypos=area_list[load_index][0]
-                    self.just_lock(region[unload_index], a[1], oid)
+                    await self.just_lock(region[unload_index], a[1], oid)
                 if index==0:
                     yield keypos
             if isinstance(a, str):
@@ -203,7 +203,6 @@ class Bins():
                             yield self.predata[keypos],keypos
                         if mode==2:
                             yield self.predata[keypos],keypos,self.predata[keypos]
-                        step=1
                     elif index==unload_index:
                         if mode==0:
                             yield keypos
@@ -218,7 +217,7 @@ class Bins():
                         yield random.choice(self.normal_area.get(a))
             else: # tuple
                 if index == load_index:
-                    self.just_lock(region[load_index],a[1],oid)
+                    await self.just_lock(region[load_index],a[1],oid)
                     if mode == 0:
                         yield a[0]
                     if mode == 1:
@@ -226,7 +225,7 @@ class Bins():
                     if mode == 2:
                         yield self.predata[a[0]],a[0],self.predata[a[0]]
                 elif index == unload_index:
-                    self.just_lock(region[unload_index],a[1],oid)
+                    await self.just_lock(region[unload_index],a[1],oid)
                     if mode == 0:
                         yield a[0]
                     if mode == 1:
@@ -431,6 +430,7 @@ class Business:
         :param to_appoints: 指定去哪儿取货, 同上
         :return:
         """
+        print("test",from_appoints,to_appoints)
         # 指定了区域中具体的取货地点，说明是设备触发的业务，运行次数由传过来的from_appoints的长度决定
         if from_appoints is not None and len(from_appoints) > 0:
             from_index = 0
@@ -440,7 +440,7 @@ class Business:
             if self.bins.binarea[self.region_area[from_index]]['bin_list'][from_appoints[0]].goodsType == self.goods_type and \
             self.bins.binarea[self.region_area[from_index]]['bin_list'][from_appoints[0]].lockId == 0:
                 area_list = self.region_area
-                area_list[from_index] = [self.bins.binarea[area_list[from_index]]['bin_list'][from_appoints[0]].name]
+                area_list[from_index] = [self.bins.binarea[area_list[from_index]]['bin_list'][from_appoints[0]].name,from_appoints[0]]
                 asyncio.create_task(self.trace_block(area_list))
             return
         # 指定了区域中具体的放货地点，说明是设备触发的业务，运行次数由传过来的to_appoints的长度决定
@@ -452,7 +452,7 @@ class Business:
             if self.bins.binarea[self.region_area[to_index]]['bin_list'][to_appoints[0]].goodsType == 0 and \
             self.bins.binarea[self.region_area[to_index]]['bin_list'][to_appoints[0]].lockId == 0:
                 area_list = self.region_area
-                area_list[to_index] = [self.bins.binarea[area_list[to_index]]['bin_list'][to_appoints[0]].name]
+                area_list[to_index] = [self.bins.binarea[area_list[to_index]]['bin_list'][to_appoints[0]].name,to_appoints[0]]
                 asyncio.create_task(self.trace_block(area_list))
             return
         # 非设备触发的业务
@@ -471,15 +471,16 @@ class Business:
         """"""
         loadx,unloadx=self.from_index,self.to_index
         oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
-        count=0
+        count=None
         keypos=None
         async for pos in self.bins.get_sequence_pos(area_list,self.goods_type,oid,self.from_index,self.to_index,self.mode,self.region_area):
-            if count==0 or count==loadx:
+            if count is None:
                 keypos=pos
-                oid = self.core.setOrder(oid, keyTask="load",keyRoute=pos,group=self.group,complete=False)
+                oid = self.core.setOrder(oid, keyTask="load",keyRoute=keypos,group=self.group,complete=False)
+                count=0
                 continue
             current_s=await self.core.waitState(oid)
-            if current_s==0:
+            if current_s==0 or current_s==3:
                 if isinstance(pos,str):
                     if count == loadx:
                         self.core.addBlock(oid,oid+f":{count}",location=pos,operation='ForkLoad',operationArgs=self.operationArgs)
@@ -529,6 +530,7 @@ class Business:
                                 break
             else:
                 break
+            count+=1
 
 
 
@@ -805,11 +807,16 @@ async def main():
     test_data3 = {'C': weihai_binarea.get("C")}
     test_data4 = {'D': weihai_binarea.get("D")}
     bins = Bins()
+    for i, j in weihai_normalarea.items():
+        bins.predata.update(j)
+
     order_system = OrderSystem(bins=bins)
-    await bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
-    await bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
-    await bins.update_area(test_data3,goodsType=1, autoAddType=0, autoClearType=0,autoInterval=30)
-    await bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
+    bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
+    bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
+    bins.update_area(test_data3,goodsType=1, autoAddType=0, autoClearType=0,autoInterval=30)
+    bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
+    # async for i in bins.get_sequence_pos(['B',("AP238",5)],1,'test',0,1,1,['B','C']):
+    #     print(i)
     # 设备绑定的点位A
     teleport_from = ['AP238', 'AP236']
     # 设备绑定的点位B
@@ -832,7 +839,7 @@ async def main():
         "to_area": "C",
         "bus_from": business1,
         "bus_to": business2,
-        "working_time": 18,
+        "working_time": 60,
         "changeSt": 0,
         "state": 0
     }
@@ -860,6 +867,7 @@ async def main():
     # # 启动发单系统
     # await order_system.run()
 
+#
 
 
 if __name__ == "__main__":
@@ -871,5 +879,7 @@ if __name__ == "__main__":
     # bins.update_area(data2,ifrandom=True)
     # print(len(bins.semaphores))
     #
-    asyncio.run(main())
+    # core=CoreUtil()
+    # core.setOrder(location="LM1460")
+    asyncio.run(main(),debug=True)
 
