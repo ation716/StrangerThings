@@ -2,9 +2,9 @@
 import json
 import sys
 import os
-# from mimetypes import inited
+from mimetypes import inited
 from typing import Union
-from pkg_resources import NoDists
+# from pkg_resources import NoDists
 try:
     import asyncio
     import random
@@ -187,7 +187,7 @@ class Bins():
         for a in area_list:
             if index==0 or index==load_index+1:
                 if isinstance(area_list[load_index],str):
-                    keypos,*_=await self.choose_pos2(area_list[load_index],state,oid)
+                    keypos,*_= await self.choose_pos2(area_list[load_index],state,oid)
                 else:
                     keypos=area_list[load_index][0]
                     self.just_lock(region[unload_index], a[1], oid)
@@ -281,6 +281,7 @@ class Bins():
             self.binarea[area]['bin_list'][index] = self.binarea[area]['bin_list'][index]._replace(goodsType=goodsType,
                                                                                                    lockId=0,
                                                                                                    changeSt=time.time())
+            # print("change")
             return self.binarea[area]['bin_list'][index].name
 
     async def just_lock(self, area, index, oid):
@@ -472,7 +473,7 @@ class Business:
         oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
         count=0
         keypos=None
-        for pos in self.bins.get_sequence_pos(area_list,self.goods_type,oid,self.from_index,self.to_index,self.mode,self.region_area):
+        async for pos in self.bins.get_sequence_pos(area_list,self.goods_type,oid,self.from_index,self.to_index,self.mode,self.region_area):
             if count==0 or count==loadx:
                 keypos=pos
                 oid = self.core.setOrder(oid, keyTask="load",keyRoute=pos,group=self.group,complete=False)
@@ -552,8 +553,8 @@ class EL():
         finalType: 加工后货物类型   
         from_area: 取货地的库位归属的区域
         to_area: 放货地的库位归属的区域
-        bus_from: 触发取货业务
-        bus_to: 绑定的
+        bus_from: 触发补货业务
+        bus_to: 触发清货业务
         workingTime: 加工需要的时间   
         changeSt: 上次使用设备的时间
         state: 设备状态，-1表示设备停用，0表示设备启用中，且设备空闲，1表示设备正在加工货物
@@ -563,8 +564,8 @@ class EL():
                                                'from_area', 'to_area', 'bus_from', 'bus_to', 'workingTime', 'changeSt',
                                                'state'])
         self.vehicle_dict = None if vehicles is None else {vehicle: {} for vehicle in vehicles}
-        self.power = self.init_area(data)
         self.bins = bins
+        self.power = self.init_area(data)
         EL.gifted_counter += 1
 
     def __del__(self):
@@ -578,7 +579,7 @@ class EL():
         """
         # 初始化，teleport_from 、teleport_to
         # 获取 teleport_from 中每个元素在 库位Bins中 from_area 中的位置
-        from_area = buss_area.get(data["from_area"])
+        from_area = weihai_binarea.get(data["from_area"])
         positions_from = [
             from_area.index(element) if element in from_area else -1
             for element in data["teleport_from"]
@@ -587,7 +588,7 @@ class EL():
         if positions_from.__contains__(-1):
             raise ValueError(f"teleport_from有误，在from_area找不到")
         # 获取 teleport_to 中每个元素在  库位Bins中 to_area 中的位置
-        to_area = buss_area.get(data["to_area"])
+        to_area = weihai_binarea.get(data["to_area"])
         positions_to = [
             to_area.index(element) if element in to_area else -1
             for element in data["teleport_to"]
@@ -626,7 +627,7 @@ class EL():
                         # 将设备设为正在加工货物
                         self.power = self.power._replace(state=1, changeSt=time.time())
                         # 将库位设为空 - 货物这会在设备上
-                        self.bins.change_state(self.power.from_area,value,0)
+                        await self.bins.change_state(self.power.from_area,value,0)
                         # 触发业务过来放货
                         asyncio.create_task(self.power.bus_from.perform_task(to_appoints=[value]))
                         # 库位中存在有货库位
@@ -807,7 +808,7 @@ async def main():
     order_system = OrderSystem(bins=bins)
     bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
     bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
-    bins.update_area(test_data3, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=30)
+    bins.update_area(test_data3,goodsType=1, autoAddType=0, autoClearType=0,autoInterval=30)
     bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
     # 设备绑定的点位A
     teleport_from = ['AP238', 'AP236']
@@ -833,7 +834,7 @@ async def main():
         "bus_to": business2,
         "working_time": 18,
         "changeSt": 0,
-        "state": 1
+        "state": 0
     }
     el = EL(bins=bins, data=data)
     await el.get_through()
