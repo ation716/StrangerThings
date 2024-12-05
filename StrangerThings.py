@@ -90,7 +90,7 @@ class Bins():
                     yield index, op, state, oid  # 找到目标元素，返回当前索引
             index += 1
 
-    def update_area(self, data, goodsType=0, autoAddType=0, autoClearType=0, autoInterval=0, ifrandom=False,
+    async def update_area(self, data, goodsType=0, autoAddType=0, autoClearType=0, autoInterval=0, ifrandom=False,
                     randomTuple=(0, 1)):
         """
         literal meaning
@@ -806,10 +806,10 @@ async def main():
     test_data4 = {'D': weihai_binarea.get("D")}
     bins = Bins()
     order_system = OrderSystem(bins=bins)
-    bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
-    bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
-    bins.update_area(test_data3,goodsType=1, autoAddType=0, autoClearType=0,autoInterval=30)
-    bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
+    await bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
+    await bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
+    await bins.update_area(test_data3,goodsType=1, autoAddType=0, autoClearType=0,autoInterval=30)
+    await bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
     # 设备绑定的点位A
     teleport_from = ['AP238', 'AP236']
     # 设备绑定的点位B
