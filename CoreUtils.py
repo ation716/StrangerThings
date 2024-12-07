@@ -17,22 +17,53 @@ class CoreUtil(metaclass=SingletonMetaClass):
         """"""
         print("init coreUtil")
         self.ip = cg.ip if not ip else ip
-    def getOrderState(self,oid):
-        """查询运单状态，返回状态和动作"""
+    def getBlockState(self,oid,name):
+        """查询所有运单块状态，返回block 为完成状态且 为load，unload的状态和动作
+        return [(state,op,name),]
+        """
         r = requests.get(self.ip + "/orderDetails/" + oid).json()
-        return r.get('state'), r.get('keyTask'),None if not r.get('blocks') else r.get('blocks')[-1]['blockId']
+        result=[]
+        for b in r.get('blocks'):
+            if b.get('location')==name:
+                if b.get('state')=="FINISHED" or b.get('state')=="STOPPED":
+                    if b.get('operation') in ("ForkLoad","JackLoad"):
+                        result.append((b.get('state'),'load'))
+                    elif b.get('operation') in ('ForkUnload','JackUnload'):
+                        result.append((b.get('state'),'unload'))
+                    else:
+                        if b.get('operation')=="script":
+                            if b.get('script_args'):
+                                if b.get('script_args').get('operation')=="load":
+                                    result.append((b.get('state'), 'unload'))
+                                elif b.get('script_args').get('operation')=="unload":
+                                    result.append((b.get('state'), 'load'))
+                break
+        if r.get("state") == "STOPPED" and result==[]:
+            return False
+        return result
+
+    def markComplete(self,oid:str):
+        """封口"""
+        return requests.post(self.ip + "/markComplete", json={"id":oid})
+
+    def getOrderState(self,oid):
+        """"""
+        r = requests.get(self.ip + "/orderDetails/" + oid).json()
+        if r is None:
+            return False,False
+        return r.get("state"),len(r.get('blocks'))
 
     async def waitState(self,oid):
         """状态waiting返回True，终态返回False"""
         while True:
-            state,_,bid= self.getOrderState(oid)
+            state,block= self.getOrderState(oid)
             if state == "WAITING":
                 return 0
             elif state=="FINISHED":
                 return 1
             elif state=="STOPPED":
                 return 2
-            elif state=="TOBEDISPATCHED" and bid is None:
+            elif state=="TOBEDISPATCHED" and block==0:
                 return 3
             await asyncio.sleep(1)
 
@@ -195,3 +226,4 @@ class CoreUtil(metaclass=SingletonMetaClass):
 
 if __name__ == '__main__':
     tes=CoreUtil()
+    print(tes.getBlockState('9af64c43-06d2-4325-a405-46e75c76bd3b'))

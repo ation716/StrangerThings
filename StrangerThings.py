@@ -16,6 +16,7 @@ try:
     from collections import namedtuple, deque
     import uuid
     from CoreUtils import CoreUtil
+    import copy
 except Exception as e:
     print(e)
 
@@ -80,14 +81,15 @@ class Bins():
         while True:
             if index >= len(lst):
                 index = 0
-                yield -1, None
+                yield [-1, None]
             if not lst[index].lockId:
                 index += 1
                 continue
             else:
-                state, op, oid = self.core.getOrderState(lst[index].lockId)
-                if state == 'FINISHED' or 'STOPPED':
-                    yield index, op, state, oid  # 找到目标元素，返回当前索引
+                result = self.core.getBlockState(lst[index].lockId,lst[index].name)
+                if result!=[]:
+                    yield [index,result]
+ # 找到目标元素，返回当前索引
             index += 1
 
     def update_area(self, data, goodsType=0, autoAddType=0, autoClearType=0, autoInterval=0, ifrandom=False,
@@ -121,6 +123,27 @@ class Bins():
         for a in self.binarea.keys():
             semaphores.setdefault(a, asyncio.Semaphore(1))
         return semaphores
+
+    async def acquire_all(self,semaphores:list=None):
+        """"""
+        tasks = [sem.acquire() for sem in semaphores]
+        await asyncio.gather(*tasks)
+
+    async def release_all(self,semaphores:list=None):
+        """"""
+        for sem in semaphores:
+            sem.release()
+        print("All semaphores released!")
+
+    async def operate_with_semaphores(self,semaphores:list=None):
+        # 尝试获取所有信号量
+        await self.acquire_all(semaphores)
+        try:
+            # 成功获取所有信号量后执行某些操作
+            print("All semaphores acquired!")
+            await asyncio.sleep(2)  # 模拟一些操作
+        finally:
+            await self.release_all(semaphores)
 
     async def choose_pos(self, area_name, state, lockId) -> tuple:
         """
@@ -158,10 +181,58 @@ class Bins():
                 continue
             return False, False
 
-    async def choose_pos2(self, area_name, state, lockId) -> tuple:
+    async def choose_all(self,area_list:list=None):
+        """
+        根据传入的区域，锁定所有库位，返回锁定后的点位元组
+        :param area_list: [(oid,area,state),(oid,area,state,index)]
+        :return:
+        """
+        semaphores = [self.semaphores[area[1]] for area in area_list if len(area)==3]
+        all_pos=[]
+        oid=area_list[0][0]
+        await self.acquire_all(semaphores)
+        try:
+            print("All semaphores acquired!")
+            for ele in area_list:
+                lockId, area_name, state,*_ = ele
+                if len(ele)==4:
+                    all_pos.append((area_name,ele[3], self.binarea[area_name]['bin_list'][ele[3]].name))
+                else:
+                    offect = self.binarea[area_name]['index']  # 保证雨露均沾的遍历
+                    area_len = len(self.binarea[area_name]['bin_list'])
+                    for i in range(area_len):
+                        if self.binarea[area_name]['bin_list'][(i + offect) % area_len].lockId == 0:
+                            bin = self.binarea[area_name]['bin_list'][(i + offect) % area_len]
+                            if state == 0:
+                                if bin.autoClearType == bin.goodsType and time.time() - bin.changeSt > bin.autoInterval:
+                                    self.binarea[area_name]['index'] = (i + offect) % area_len
+                                    all_pos.append((area_name,(i + offect) % area_len,bin.name))
+                                    break
+                            if state:
+                                if bin.autoAddType == state and time.time() - bin.changeSt > bin.autoInterval:
+                                    self.binarea[area_name]['index'] = (i + offect) % area_len
+                                    all_pos.append((area_name, (i + offect) % area_len, bin.name))
+                                    break
+                            if state == bin.goodsType:
+                                self.binarea[area_name]['index'] = (i + offect) % area_len
+                                all_pos.append((area_name, (i + offect) % area_len, bin.name))
+                                break
+                    else:
+                       all_pos.append(False)
+        except Exception as e:
+            print(e)
+        finally:
+            if False not in all_pos:
+                for pos in all_pos:
+                    self.binarea[area_name]['bin_list'][pos[1]] = \
+                        self.binarea[area_name]['bin_list'][pos[1]]._replace(lockId=oid)
+            await self.release_all(semaphores)
+            return [pos[2] for pos in all_pos]
+
+    async def choose_pos2(self, area_list:list,state:int,oid:str,load_index,unload_index,region) -> tuple:
         """"""
         while True:
-            pos,index=await self.choose_pos(area_name, state, lockId)
+            pos,index=await self.choose_pos(area_list, state, oid)
             if pos:
                 return pos,index
             else:
@@ -171,12 +242,10 @@ class Bins():
         """是否可以不去Fixpoint"""
         pass
         return False
+
     async def get_sequence_pos(self,area_list:list,state:int,oid:str,load_index,unload_index,mode,region):
         """
-        返回点位数据，
-        取货分为两个过程，取货过程为第0个点到取货点
-        第一次需要返回loadpos作为调度的keyroute，
-
+        返回点位数据跌迭代器，会因为找不到点位而阻塞
         :param area_list:
         :param state:
         :param oid:
@@ -187,7 +256,7 @@ class Bins():
         for a in area_list:
             if index==0 or index==load_index+1:
                 if isinstance(area_list[load_index],str):
-                    keypos,*_= await self.choose_pos2(area_list[load_index],state,oid)
+                    keypos,*_= await self.choose_pos2(area_list[load_index],state,oid,load_index,unload_index,region)
                 else:
                     keypos=area_list[load_index][0]
                     await self.just_lock(region[unload_index], a[1], oid)
@@ -216,27 +285,87 @@ class Bins():
                     else:
                         yield random.choice(self.normal_area.get(a))
             else: # tuple
+                tem=self.binarea[a[0]]['bin_list'][a[1]].name
                 if index == load_index:
                     await self.just_lock(region[load_index],a[1],oid)
                     if mode == 0:
-                        yield a[0]
+                        yield tem
                     if mode == 1:
-                        yield self.predata[a[0]],a[0]
+                        yield self.predata[tem],tem
                     if mode == 2:
-                        yield self.predata[a[0]],a[0],self.predata[a[0]]
+                        yield self.predata[tem],tem,self.predata[tem]
                 elif index == unload_index:
                     await self.just_lock(region[unload_index],a[1],oid)
                     if mode == 0:
-                        yield a[0]
+                        yield tem
                     if mode == 1:
-                        yield self.predata[a[0]], a[0]
+                        yield self.predata[tem], tem
                     if mode == 2:
-                        yield self.predata[a[0]], a[0], self.predata[a[0]]
+                        yield self.predata[tem], tem, self.predata[tem]
                 else:
-                    yield a[0]
+                    yield tem
             index+=1
 
+    async def get_sequence_pos_full(self,area_list:list,state:int,oid:str,load_index,unload_index,mode,region):
+        """
+        返回点位数据列表，如果获取不到所有点位返回空
+        :param area_list:
+        :param state:
+        :param oid:
+        :return:
+        """
+        data=[None,None]
+        data[0]=(oid,area_list[load_index],state) if isinstance(area_list[load_index],str) else (oid,area_list[load_index][0],state,area_list[load_index][1])
+        data[1]=(oid,area_list[unload_index],0) if isinstance(area_list[unload_index],str) else (oid,area_list[unload_index][0],0,area_list[unload_index][1])
 
+        keypos=await self.choose_all(data)
+        if False in keypos:
+            return
+        index=0
+        for a in area_list:
+            if index==0:
+                yield keypos[0]
+            if isinstance(a, str):
+                if self.binarea.get(a):
+                    # 是库位
+                    if index==load_index:
+                        if mode==0:
+                            yield keypos[0]
+                        if mode==1:
+                            yield self.predata[keypos[0]],keypos[0]
+                        if mode==2:
+                            yield self.predata[keypos[0]],keypos[0],self.predata[keypos[0]]
+                    elif index==unload_index:
+                        if mode==0:
+                            yield keypos[1]
+                        if mode==1:
+                            yield self.predata[keypos[1]],keypos[1]
+                        if mode==2:
+                            yield self.predata[keypos[1]],keypos[1],self.predata[keypos[1]]
+                elif self.normal_area.get(a):
+                    if self.if_avilable():
+                        yield None
+                    else:
+                        yield random.choice(self.normal_area.get(a))
+            else: # tuple
+                if index == load_index:
+                    if mode == 0:
+                        yield keypos[0]
+                    if mode == 1:
+                        yield self.predata[keypos[0]],keypos[0]
+                    if mode == 2:
+                        yield self.predata[keypos[0]],keypos[0],self.predata[keypos[0]]
+                elif index == unload_index:
+                    await self.just_lock(region[unload_index],a[1],oid)
+                    if mode == 0:
+                        yield keypos[1]
+                    if mode == 1:
+                        yield self.predata[keypos[1]], keypos[1]
+                    if mode == 2:
+                        yield self.predata[keypos[1]], keypos[1], self.predata[keypos[1]]
+                else:
+                    yield self.binarea[a[0]]['bin_list'][a[1]]
+            index+=1
     async def release_bins(self):
         """
         运单完成后释放库位
@@ -249,17 +378,23 @@ class Bins():
             flag = False
             for area, gen in gener.items():
                 try:
-                    i, op, state, oid = next(gen)
+                    i,res = next(gen)
                     if i != -1:
                         async with self.semaphores[area]:
-                            if op == "load":
-                                self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(
-                                    goodsType=0, lockId=0, changeSt=time.time())
-                            elif op == "unload":
-                                type = oid.split('type')[1].split('end')[0]
-                                self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(
-                                    goodsType=oid, lockId=0,
-                                    changeSt=time.time())
+                            if res == False:
+                                # 运单被stopped
+                                self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(lockId=0)
+                            else:
+                                for ele in res:
+                                    state,op=ele
+                                    if op == "load":
+                                        self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(
+                                            goodsType=0, lockId=0, changeSt=time.time())
+                                    elif op == "unload":
+                                        type = int(self.binarea[area]['bin_list'][i].lockId.split('type')[1].split('end')[0])
+                                        self.binarea[area]['bin_list'][i] = self.binarea[area]['bin_list'][i]._replace(
+                                            goodsType=type, lockId=0,
+                                            changeSt=time.time())
                     else:
                         flag = True
                 except StopIteration:
@@ -437,10 +572,12 @@ class Business:
             if self.from_index is not None:
                 from_index = self.from_index
             # 判断库位状态 为 有货 且 货物type为 self.load_type【加一层判断更安全】   并且库位没有被锁定
+            print("area",self.region_area[from_index])
             if self.bins.binarea[self.region_area[from_index]]['bin_list'][from_appoints[0]].goodsType == self.goods_type and \
             self.bins.binarea[self.region_area[from_index]]['bin_list'][from_appoints[0]].lockId == 0:
-                area_list = self.region_area
-                area_list[from_index] = [self.bins.binarea[area_list[from_index]]['bin_list'][from_appoints[0]].name,from_appoints[0]]
+                area_list = copy.deepcopy(self.region_area)
+                area_list[from_index] = [self.region_area[self.from_index],from_appoints[0]]
+                print("create task")
                 asyncio.create_task(self.trace_block(area_list))
             return
         # 指定了区域中具体的放货地点，说明是设备触发的业务，运行次数由传过来的to_appoints的长度决定
@@ -451,8 +588,9 @@ class Business:
                 to_index = self.to_index
             if self.bins.binarea[self.region_area[to_index]]['bin_list'][to_appoints[0]].goodsType == 0 and \
             self.bins.binarea[self.region_area[to_index]]['bin_list'][to_appoints[0]].lockId == 0:
-                area_list = self.region_area
-                area_list[to_index] = [self.bins.binarea[area_list[to_index]]['bin_list'][to_appoints[0]].name,to_appoints[0]]
+                area_list = copy.deepcopy(self.region_area)
+                area_list[to_index] = [self.region_area[self.to_index],to_appoints[0]]
+                print("create task")
                 asyncio.create_task(self.trace_block(area_list))
             return
         # 非设备触发的业务
@@ -468,16 +606,22 @@ class Business:
 
 
     async def trace_block(self, area_list=None):
-        """"""
+        """
+
+        :param area_list: [area,(area,index)]
+        :return:
+        """
         loadx,unloadx=self.from_index,self.to_index
         oid = "bus" + self.business_id + "type" + str(self.goods_type) + "end" + str(uuid.uuid4())
-        count=None
-        keypos=None
-        async for pos in self.bins.get_sequence_pos(area_list,self.goods_type,oid,self.from_index,self.to_index,self.mode,self.region_area):
-            if count is None:
-                keypos=pos
-                oid = self.core.setOrder(oid, keyTask="load",keyRoute=keypos,group=self.group,complete=False)
-                count=0
+        count=-1
+        loadpos=None
+        async for pos in self.bins.get_sequence_pos_full(area_list,self.goods_type,oid,self.from_index,self.to_index,self.mode,self.region_area):
+            if count ==-1:
+                load=pos
+                if load is None:
+                    return
+                oid = self.core.setOrder(oid, keyTask="load",keyRoute=loadpos,group=self.group,complete=False)
+                count+=1
                 continue
             current_s=await self.core.waitState(oid)
             if current_s==0 or current_s==3:
@@ -531,6 +675,7 @@ class Business:
             else:
                 break
             count+=1
+        self.core.markComplete(oid)
 
 
 
@@ -653,7 +798,7 @@ class EL():
                 # 获取放置目标库位
                 for key, value in self.power.teleportTo.items():
                     if self.bins.binarea[self.power.to_area]['bin_list'][value].goodsType == 0:
-                        self.bins.change_state(self.power.to_area,value,self.power.finalType)
+                        await self.bins.change_state(self.power.to_area,value,self.power.finalType)
                         # 加工结束
                         self.power = self.power._replace(state=0)
                         # 出发业务把货拿走
@@ -665,7 +810,7 @@ class EL():
                     tasks = []
                     for key, value in self.power.teleportTo.items():
                         appoints = [value]
-                        task = asyncio.create_task(self.power.bus_from.perform_task(from_appoints=appoints))
+                        task = asyncio.create_task(self.power.bus_to.perform_task(from_appoints=appoints))
                         tasks.append(task)
                     # 这里是需要等待至少有一个业务补货完成再继续运功设备
                     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -813,9 +958,13 @@ async def main():
     order_system = OrderSystem(bins=bins)
     bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
     bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
-    bins.update_area(test_data3,goodsType=1, autoAddType=0, autoClearType=0,autoInterval=30)
+    bins.update_area(test_data3,goodsType=0, autoAddType=0, autoClearType=0,autoInterval=30)
     bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
-    # async for i in bins.get_sequence_pos(['B',("AP238",5)],1,'test',0,1,1,['B','C']):
+    # a=await bins.choose_all([('111','A',1),('111','B',1)])
+
+    # async for i in bins.get_sequence_pos(['B',("C",5)],1,'test',0,1,1,['B','C']):
+    #     print(i)
+    # async for i in bins.get_sequence_pos_full(['B',("C",5)],1,'test',0,1,1,['B','C']):
     #     print(i)
     # 设备绑定的点位A
     teleport_from = ['AP238', 'AP236']
@@ -828,7 +977,8 @@ async def main():
     business1 = Business(business_id=1,region_area=["B","C"], interval=5,
                          bins=bins,group="CDD14",goods_type=1)
     business2 = Business(business_id=2, region_area=["C", "D"], interval=5,
-                         bins=bins, group="CDD14", goods_type=1)
+                         bins=bins, group="CDD14", goods_type=2)
+    # await business1.trace_block(['B',("C",5)])
     data = {
         "name": '01',
         "teleport_from": teleport_from,
@@ -844,7 +994,11 @@ async def main():
         "state": 0
     }
     el = EL(bins=bins, data=data)
-    await el.get_through()
+    tasks = []
+    tasks.append(asyncio.create_task(el.get_through()))
+    # tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+    tasks.append(asyncio.create_task(bins.release_bins()))
+    await asyncio.gather(*tasks)
     # 创建多个业务，每个业务都有不同的搬运周期
     # # 1 到 2，运货
     # business1 = Business(business_id=1, from_regions="area1", to_regions="area2", interval=5, const_output=500,
