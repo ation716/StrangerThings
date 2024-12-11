@@ -50,6 +50,44 @@ weihai_normalarea={'A': {'AP415': 'LM490', 'AP412': 'LM489', 'AP413': 'LM491', '
                                           'AP238': 'LM779', 'AP231': 'LM794', 'AP237': 'LM781', 'AP234': 'LM797', 'AP235': 'LM798'},
                    'D': {'AP186': 'LM831', 'AP230': 'LM834', 'AP139': 'LM833', 'AP192': 'LM835', 'AP171': 'LM832', 'AP221': 'LM830', 'AP188': 'LM829'}}
 
+biyadi={
+    "L1":['DHQ-01','DHQ-03','DHQ-05'],
+    "L2":['DHQ-02','DHQ-04','DHQ-06'],
+    "K":[f'XCRK-0{i}' for i in range(1,9)],
+    "M":[f'DCRK-0{i}' for i in range(1,7)],
+    "N":['DCRK-01-01','DCRK-01-02','DCRK-01-03','DCRK-01-04','DCRK-01-05','DCRK-01-06',
+                 'DCRK-02-01','DCRK-02-02','DCRK-02-03','DCRK-02-04','DCRK-02-05','DCRK-02-06']+['DCRK-03-01','DCRK-03-02','DCRK-03-03','DCRK-03-04','DCRK-03-05','DCRK-03-06',
+                'DCRK-04-01','DCRK-04-02','DCRK-04-03','DCRK-04-04','DCRK-04-05','DCRK-04-06'],
+    "I": ['CCQX-02-01-01','CCQX-02-01-02','CCQX-02-01-03','CCQX-02-01-04','CCQX-02-01-05','CCQX-02-01-06','CCQX-02-01-07','CCQX-02-01-08','CCQX-02-01-09','CCQX-02-01-10',
+                'CCQX-02-01-11','CCQX-02-01-12','CCQX-02-01-13','CCQX-02-02-01','CCQX-02-02-02','CCQX-02-02-03','CCQX-02-02-04','CCQX-02-02-05','CCQX-02-02-06','CCQX-02-02-07',
+                'CCQX-02-02-08','CCQX-02-02-09','CCQX-02-02-10','CCQX-02-02-11','CCQX-02-02-12','CCQX-02-02-13','CCQX-02-03-01','CCQX-02-03-02','CCQX-02-03-03','CCQX-02-03-04',
+                'CCQX-02-03-05','CCQX-02-03-06','CCQX-02-03-07','CCQX-02-03-08','CCQX-02-03-09','CCQX-02-03-10','CCQX-02-03-11','CCQX-02-03-12','CCQX-02-03-13','CCQX-02-04-01',
+                'CCQX-02-04-02','CCQX-02-04-03','CCQX-02-04-04','CCQX-02-04-05','CCQX-02-04-06','CCQX-02-04-07','CCQX-02-04-08','CCQX-02-04-09','CCQX-02-04-10','CCQX-02-04-11',
+                'CCQX-02-04-12','CCQX-02-04-13','CCQX-02-05-01','CCQX-02-05-02','CCQX-02-05-03','CCQX-02-05-04','CCQX-02-05-05','CCQX-02-05-06','CCQX-02-05-07','CCQX-02-05-08',
+                'CCQX-02-05-09','CCQX-02-05-10','CCQX-02-05-11','CCQX-02-05-12','CCQX-02-05-13','CCQX-02-06-01','CCQX-02-06-02','CCQX-02-06-03','CCQX-02-06-04','CCQX-02-06-05',
+                'CCQX-02-06-06','CCQX-02-06-07','CCQX-02-06-08','CCQX-02-06-09','CCQX-02-06-10','CCQX-02-06-11','CCQX-02-06-12','CCQX-02-06-13','CCQX-02-07-01','CCQX-02-07-02',
+                'CCQX-02-07-03','CCQX-02-07-04','CCQX-02-07-05','CCQX-02-07-06','CCQX-02-07-07','CCQX-02-07-08','CCQX-02-07-09','CCQX-02-07-10','CCQX-02-07-11','CCQX-02-07-12',
+                'CCQX-02-07-13','CCQX-02-08-01','CCQX-02-08-02','CCQX-02-08-03','CCQX-02-08-04','CCQX-02-08-05','CCQX-02-08-06','CCQX-02-08-07','CCQX-02-08-08','CCQX-02-08-09',
+                'CCQX-02-08-10','CCQX-02-08-11','CCQX-02-08-12','CCQX-02-08-13','CCQX-02-09-01','CCQX-02-09-02','CCQX-02-09-03','CCQX-02-09-04','CCQX-02-09-05','CCQX-02-09-06',
+                'CCQX-02-09-07','CCQX-02-09-08','CCQX-02-09-09','CCQX-02-09-10','CCQX-02-09-11','CCQX-02-09-12','CCQX-02-09-13','CCQX-02-10-01','CCQX-02-10-02','CCQX-02-10-03',
+                'CCQX-02-10-04','CCQX-02-10-05','CCQX-02-10-06','CCQX-02-10-07','CCQX-02-10-08','CCQX-02-10-09','CCQX-02-10-10','CCQX-02-10-11','CCQX-02-10-12','CCQX-02-10-13',
+                'CCQX-02-11-01','CCQX-02-11-02','CCQX-02-11-03','CCQX-02-11-04','CCQX-02-11-05','CCQX-02-11-06','CCQX-02-11-07','CCQX-02-11-08','CCQX-02-11-09','CCQX-02-11-10',
+                'CCQX-02-11-11','CCQX-02-11-12','CCQX-02-11-13','CCQX-02-12-01','CCQX-02-12-02','CCQX-02-12-03','CCQX-02-12-04','CCQX-02-12-05','CCQX-02-12-06','CCQX-02-12-07',
+                'CCQX-02-12-08','CCQX-02-12-09','CCQX-02-12-10','CCQX-02-12-11','CCQX-02-12-12','CCQX-02-12-13','CCQX-02-13-01','CCQX-02-13-02','CCQX-02-13-03','CCQX-02-13-04',
+                'CCQX-02-13-05','CCQX-02-13-06','CCQX-02-13-07','CCQX-02-13-08','CCQX-02-13-09','CCQX-02-13-10','CCQX-02-13-11','CCQX-02-13-12','CCQX-02-13-13','CCQX-02-14-01',
+                'CCQX-02-14-02','CCQX-02-14-03','CCQX-02-14-04','CCQX-02-14-05','CCQX-02-14-06','CCQX-02-14-07','CCQX-02-14-08','CCQX-02-14-09','CCQX-02-14-10','CCQX-02-14-11',
+                'CCQX-02-14-12','CCQX-02-14-13','CCQX-02-15-01','CCQX-02-15-02','CCQX-02-15-03','CCQX-02-15-04','CCQX-02-15-05','CCQX-02-15-06','CCQX-02-15-07','CCQX-02-15-08',
+                'CCQX-02-15-09','CCQX-02-15-10','CCQX-02-15-11','CCQX-02-15-12','CCQX-02-15-13','CCQX-02-16-01','CCQX-02-16-02','CCQX-02-16-03','CCQX-02-16-04','CCQX-02-16-05',
+                'CCQX-02-16-06','CCQX-02-16-07','CCQX-02-16-08','CCQX-02-16-09','CCQX-02-16-10','CCQX-02-16-11','CCQX-02-16-12','CCQX-02-16-13','CCQX-02-17-01','CCQX-02-17-02',
+                'CCQX-02-17-03','CCQX-02-17-04','CCQX-02-17-05','CCQX-02-17-06','CCQX-02-17-07','CCQX-02-17-08','CCQX-02-17-09','CCQX-02-17-10','CCQX-02-17-11','CCQX-02-17-12'],
+    "J":[ 'XCRK-02-01','XCRK-02-02','XCRK-02-03','XCRK-02-04','XCRK-02-05','XCRK-02-06','XCRK-02-07','XCRK-02-08','XCRK-02-09',
+        'XCRK-03-01','XCRK-03-02','XCRK-03-03','XCRK-03-04','XCRK-03-05','XCRK-03-06','XCRK-03-07','XCRK-03-08','XCRK-03-09',
+        'XCRK-01-01','XCRK-01-02','XCRK-01-03','XCRK-01-04','XCRK-01-05','XCRK-01-06','XCRK-01-07','XCRK-01-08','XCRK-01-09',
+        'XCRK-04-01','XCRK-04-02','XCRK-04-03','XCRK-04-04','XCRK-04-05','XCRK-04-06','XCRK-04-07','XCRK-04-08','XCRK-04-09',
+          ]
+
+}
+
 
 
 
@@ -944,84 +982,132 @@ class OrderSystem:
 #     # await order_system.run()
 
 
-# 叉车逻辑测试
+# 威海叉车逻辑测试
+# async def main():
+#     # 初始化发单系统
+#     test_data1 = {'A': weihai_binarea.get("A")}
+#     test_data2 = {'B': weihai_binarea.get("B")}
+#     test_data3 = {'C': weihai_binarea.get("C")}
+#     test_data4 = {'D': weihai_binarea.get("D")}
+#     bins = Bins()
+#     for i, j in weihai_normalarea.items():
+#         bins.predata.update(j)
+#
+#     order_system = OrderSystem(bins=bins)
+#     bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
+#     bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
+#     bins.update_area(test_data3,goodsType=0, autoAddType=0, autoClearType=0,autoInterval=30)
+#     bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
+#     # a=await bins.choose_all([('111','A',1),('111','B',1)])
+#
+#     # async for i in bins.get_sequence_pos(['B',("C",5)],1,'test',0,1,1,['B','C']):
+#     #     print(i)
+#     # async for i in bins.get_sequence_pos_full(['B',("C",5)],1,'test',0,1,1,['B','C']):
+#     #     print(i)
+#     # 设备绑定的点位A
+#     teleport_from = ['AP238', 'AP236']
+#     # 设备绑定的点位B
+#     teleport_to = ['AP231', 'AP232']
+#     # A
+#
+#     # 1 到 2，运货
+#     # bus_data =
+#     business1 = Business(business_id=1,region_area=["B","C"], interval=5,
+#                          bins=bins,group="CDD14",goods_type=1)
+#     business2 = Business(business_id=2, region_area=["C", "D"], interval=5,
+#                          bins=bins, group="CDD14", goods_type=2)
+#     # await business1.trace_block(['B',("C",5)])
+#     data = {
+#         "name": '01',
+#         "teleport_from": teleport_from,
+#         "teleport_to": teleport_to,
+#         "origin_type": 1,
+#         "final_type": 2,
+#         "from_area": 'C',
+#         "to_area": "C",
+#         "bus_from": business1,
+#         "bus_to": business2,
+#         "working_time": 60,
+#         "changeSt": 0,
+#         "state": 0
+#     }
+#     el = EL(bins=bins, data=data)
+#     tasks = []
+#     tasks.append(asyncio.create_task(el.get_through()))
+#     # tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+#     tasks.append(asyncio.create_task(bins.release_bins()))
+#     await asyncio.gather(*tasks)
+
+
+# 比亚迪料箱车逻辑测试
 async def main():
     # 初始化发单系统
-    test_data1 = {'A': weihai_binarea.get("A")}
-    test_data2 = {'B': weihai_binarea.get("B")}
-    test_data3 = {'C': weihai_binarea.get("C")}
-    test_data4 = {'D': weihai_binarea.get("D")}
+    test_data1 = {'I': biyadi.get("I")}
+    test_data2 = {'J': biyadi.get("J")}
+    test_data3 = {'K': biyadi.get("K")}
+    test_data4 = {'L1': biyadi.get("L1")}
+    test_data5 = {'L2': biyadi.get("L2")}
+    test_data6 = {'M': biyadi.get("M")}
+    test_data7 = {'N': biyadi.get("N")}
+
     bins = Bins()
-    for i, j in weihai_normalarea.items():
-        bins.predata.update(j)
 
     order_system = OrderSystem(bins=bins)
-    bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
-    bins.update_area(test_data2, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=30)
-    bins.update_area(test_data3,goodsType=0, autoAddType=0, autoClearType=0,autoInterval=30)
-    bins.update_area(test_data4, autoAddType=0, autoClearType=2, ifrandom=True,autoInterval=30)
-    # a=await bins.choose_all([('111','A',1),('111','B',1)])
+    bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=100)
+    bins.update_area(test_data2, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+    bins.update_area(test_data3, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+    bins.update_area(test_data4, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+    bins.update_area(test_data5, autoAddType=0, autoClearType=0, ifrandom=True,randomTuple=(0,2),autoInterval=0)
+    bins.update_area(test_data6, goodsType=0,autoAddType=0, autoClearType=2,autoInterval=0)
 
-    # async for i in bins.get_sequence_pos(['B',("C",5)],1,'test',0,1,1,['B','C']):
-    #     print(i)
-    # async for i in bins.get_sequence_pos_full(['B',("C",5)],1,'test',0,1,1,['B','C']):
-    #     print(i)
+    vehicles1=[f"container-X-0{i}" for i in range(1,5)]
+    vehicles2=["container-D-03" , "container-D-06"]
+    business1 = Business(business_id=1, region_area=["I", "J"], interval=50, const_output=500,
+                    bins=bins, vehicles=vehicles1, goods_type=1)
+    business2 = Business(business_id=2, region_area=["J", "K"], interval=50, const_output=500,
+                    bins=bins, goods_type=1)
+    business3 = Business(business_id=3, region_area=["K", "L1"], interval=50, const_output=500,
+                    bins=bins, goods_type=1)
+    business4 = Business(business_id=4, region_area=["L2", "M"], interval=5,
+                         bins=bins, goods_type=2)
+    business4 = Business(business_id=5, region_area=["M", "N"], interval=5,
+                         bins=bins, vehicles=vehicles2, goods_type=2)
     # 设备绑定的点位A
-    teleport_from = ['AP238', 'AP236']
-    # 设备绑定的点位B
-    teleport_to = ['AP231', 'AP232']
-    # A
-
-    # 1 到 2，运货
-    # bus_data =
-    business1 = Business(business_id=1,region_area=["B","C"], interval=5,
-                         bins=bins,group="CDD14",goods_type=1)
-    business2 = Business(business_id=2, region_area=["C", "D"], interval=5,
-                         bins=bins, group="CDD14", goods_type=2)
-    # await business1.trace_block(['B',("C",5)])
     data = {
         "name": '01',
-        "teleport_from": teleport_from,
-        "teleport_to": teleport_to,
+        "teleport_from": "",
+        "teleport_to": "",
         "origin_type": 1,
         "final_type": 2,
-        "from_area": 'C',
-        "to_area": "C",
-        "bus_from": business1,
-        "bus_to": business2,
+        "from_area": 'L1',
+        "to_area": "L2",
+        "bus_from": business3,
+        "bus_to": business4,
         "working_time": 60,
         "changeSt": 0,
         "state": 0
     }
-    el = EL(bins=bins, data=data)
+    data['teleport_from'] =["DHQ-01"]
+    data['teleport_to'] =["DHQ-02"]
+    el1 = EL(bins=bins, data=data)
+    data['teleport_from'] =["DHQ-03"]
+    data['teleport_to'] =["DHQ-04"]
+    el2 = EL(bins=bins, data=data)
+    data['teleport_from'] = ["DHQ-05"]
+    data['teleport_to'] = ["DHQ-06"]
+    el3 = EL(bins=bins, data=data)
+    data['teleport_from'] = ["DHQ-03"]
+    data['teleport_to'] = ["DHQ-04"]
+    v_el1= EL(bins=bins, data=data)
     tasks = []
-    tasks.append(asyncio.create_task(el.get_through()))
-    # tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+    tasks.append(asyncio.create_task(el1.get_through()))
+    tasks.append(asyncio.create_task(el2.get_through()))
+    tasks.append(asyncio.create_task(el3.get_through()))
+    tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+    tasks.append(asyncio.create_task(business.perform_task_unload_box()))
     tasks.append(asyncio.create_task(bins.release_bins()))
     await asyncio.gather(*tasks)
-    # 创建多个业务，每个业务都有不同的搬运周期
-    # # 1 到 2，运货
-    # business1 = Business(business_id=1, from_regions="area1", to_regions="area2", interval=5, const_output=500,
-    #                      bins=bins,vehicles=vehicles,type=1)
-    # # 2 到 3 运货
-    # business2 = Business(business_id=2, from_regions="area2", to_regions="area3", interval=5, const_output=500,
-    #                      bins=bins,vehicles=vehicles,type=1)
-    # # 3 到 2 运空箱
-    # business3 = Business(business_id=3, from_regions="area3", to_regions="area2", interval=5, const_output=500,
-    #                      bins=bins, vehicles=vehicles,type=2)
-    # # 2 到 1 运空箱
-    # business4 = Business(business_id=4, from_regions="area2", to_regions="area1", interval=5, const_output=500,
-    #                      bins=bins, vehicles=vehicles,type=2)
-    #
-    # # 将所有业务添加到系统中
-    # order_system.add_business(business1)
-    # order_system.add_business(business2)
-    # order_system.add_business(business3)
-    # order_system.add_business(business4)
-    # # 启动发单系统
-    # await order_system.run()
 
-#
 
 
 if __name__ == "__main__":
