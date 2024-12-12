@@ -23,6 +23,8 @@ class CoreUtil(metaclass=SingletonMetaClass):
         """
         r = requests.get(self.ip + "/orderDetails/" + oid).json()
         result=[]
+        if not r.get('blocks'):
+            pass
         for b in r.get('blocks'):
             if b.get('location')==name:
                 if b.get('state')=="FINISHED" or b.get('state')=="STOPPED":
@@ -89,7 +91,7 @@ class CoreUtil(metaclass=SingletonMetaClass):
             'keyTask': kwargs.get('operation'),
             'blocks': [
                 {
-                    'blockId': kwargs.get('goodsType')+oid + ':01',
+                    'blockId': str(kwargs.get('goodsType'))+oid + ':01',
                     'location': kwargs.get('loc'),
                     "operation": "script",
                     "script_name": "ctuNoBlock.py",
@@ -112,7 +114,7 @@ class CoreUtil(metaclass=SingletonMetaClass):
         res = requests.post(url=f"{cg.ip}/setOrder", json=json_d, timeout=10)
         return oid
 
-    def get_contaioners_data(vehicle) -> list:
+    def get_contaioners_data(self,vehicle) -> list:
         """
         查询机器人容器状态 - 针对料箱车的
         :return:
@@ -120,7 +122,7 @@ class CoreUtil(metaclass=SingletonMetaClass):
         r = requests.get(cg.ip + f"/robotsStatus?vehicles={vehicle}").json()
         return r['report'][0]['rbk_report']['containers']
 
-    def get_robot_current_order(vehicle):
+    def get_robot_current_order(self,vehicle):
         """
         目前来看，是针对顶升车和叉车的，查询机器人
         :return:

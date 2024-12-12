@@ -116,7 +116,9 @@ class Bins():
     def _continues_serach(self, lst):
         """"""
         index = 0
+        sleep_count=0
         while True:
+            sleep_count += 1
             if index >= len(lst):
                 index = 0
                 yield [-1, None]
@@ -127,6 +129,9 @@ class Bins():
                 result = self.core.getBlockState(lst[index].lockId,lst[index].name)
                 if result!=[]:
                     yield [index,result]
+            if sleep_count >= 5:
+                time.sleep(0.1)
+                sleep_count = 0
  # 找到目标元素，返回当前索引
             index += 1
 
@@ -511,7 +516,7 @@ class Business:
                 if pos:
                     print(f"Business {self.business_id}:load {pos}")
                     self.core.setShareOrder(oid=oid, loc=pos, operation='load', keytask='load',
-                                            GoodsType=self.goods_type)
+                                            goodsType=self.goods_type)
                 else:
                     # print(f"Business {self.business_id}:can not find load pos")
                     break
@@ -544,7 +549,7 @@ class Business:
                                 else:
                                     self.core.setShareOrder(oid=oid, vehicle=v, operation='unload',
                                                             goodsId=container['goods_id'], loc=pos)
-            await asyncio.sleep(1)
+                await asyncio.sleep(0.2)
 
     async def perform_task_box(self,from_points=None,to_points=None):
         """由设备触发的料箱车取货运单"""
@@ -1097,6 +1102,77 @@ def batch_creation_equipment(bins,data,teleport_from,teleport_to,ratio):
 #     await asyncio.gather(*tasks)
 
 
+# # 比亚迪料箱车逻辑测试
+# async def main():
+#     # 初始化发单系统
+#     test_data1 = {'I': biyadi.get("I")}
+#     test_data2 = {'J': biyadi.get("J")}
+#     test_data3 = {'K': biyadi.get("K")}
+#     test_data4 = {'L1': biyadi.get("L1")}
+#     test_data5 = {'L2': biyadi.get("L2")}
+#     test_data6 = {'M': biyadi.get("M")}
+#     test_data7 = {'N': biyadi.get("N")}
+#
+#     bins = Bins()
+#
+#     order_system = OrderSystem(bins=bins)
+#     bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=100)
+#     bins.update_area(test_data2, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+#     bins.update_area(test_data3, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+#     bins.update_area(test_data4, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+#     bins.update_area(test_data5, autoAddType=0, autoClearType=0, ifrandom=True,randomTuple=(0,2),autoInterval=0)
+#     bins.update_area(test_data6, goodsType=0,autoAddType=0, autoClearType=2,autoInterval=0)
+#
+#     vehicles1=[f"container-X-0{i}" for i in range(1,5)]
+#     vehicles2=["container-D-03" , "container-D-06"]
+#     business1 = Business(business_id=1, region_area=["I", "J"], interval=50, const_output=500,
+#                     bins=bins, vehicles=vehicles1, goods_type=1)
+#     business2 = Business(business_id=2, region_area=["J", "K"], interval=50, const_output=500,
+#                     bins=bins, goods_type=1)
+#     business3 = Business(business_id=3, region_area=["K", "L1"], interval=50, const_output=500,
+#                     bins=bins, goods_type=1)
+#     business4 = Business(business_id=4, region_area=["L2", "M"], interval=5,
+#                          bins=bins, goods_type=2)
+#     business4 = Business(business_id=5, region_area=["M", "N"], interval=5,
+#                          bins=bins, vehicles=vehicles2, goods_type=2)
+#     # 设备绑定的点位A
+#     data = {
+#         "name": '01',
+#         "teleport_from": "",
+#         "teleport_to": "",
+#         "origin_type": 1,
+#         "final_type": 2,
+#         "from_area": 'L1',
+#         "to_area": "L2",
+#         "bus_from": business3,
+#         "bus_to": business4,
+#         "working_time": 60,
+#         "changeSt": 0,
+#         "state": 0
+#     }
+#     data['teleport_from'] =["DHQ-01"]
+#     data['teleport_to'] =["DHQ-02"]
+#     el1 = EL(bins=bins, data=data)
+#     data['teleport_from'] =["DHQ-03"]
+#     data['teleport_to'] =["DHQ-04"]
+#     el2 = EL(bins=bins, data=data)
+#     data['teleport_from'] = ["DHQ-05"]
+#     data['teleport_to'] = ["DHQ-06"]
+#     el3 = EL(bins=bins, data=data)
+#     data['teleport_from'] = ["DHQ-03"]
+#     data['teleport_to'] = ["DHQ-04"]
+#     v_el1= EL(bins=bins, data=data)
+#     v_el1= EL(bins=bins, data=data)
+#
+#     tasks = []
+#     tasks.append(asyncio.create_task(el1.get_through()))
+#     tasks.append(asyncio.create_task(el2.get_through()))
+#     tasks.append(asyncio.create_task(el3.get_through()))
+#     tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+#     tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+#     tasks.append(asyncio.create_task(bins.release_bins()))
+#     await asyncio.gather(*tasks)
+
 
 # 比亚迪料箱车逻辑测试
 async def main():
@@ -1113,7 +1189,7 @@ async def main():
 
     order_system = OrderSystem(bins=bins)
     bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=100)
-    bins.update_area(test_data2, autoAddType=0, autoClearType=1, ifrandom=True,autoInterval=0)
+    bins.update_area(test_data2, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=100)
     bins.update_area(test_data3, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
     bins.update_area(test_data4, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
     bins.update_area(test_data5, autoAddType=0, autoClearType=0, ifrandom=True,randomTuple=(0,2),autoInterval=0)
@@ -1121,38 +1197,62 @@ async def main():
 
     vehicles1=[f"container-X-0{i}" for i in range(1,5)]
     vehicles2=["container-D-03" , "container-D-06"]
-    business1 = Business(business_id=1, region_area=["I", "J"], interval=50, const_output=500,
+    business1 = Business(business_id=1, region_area=["I", "J"], interval=50, const_output=5,
                     bins=bins, vehicles=vehicles1, goods_type=1)
-    # business2 = Business(business_id=2, region_area=["J", "K"], interval=50, const_output=500,
-    #                 bins=bins, goods_type=1)
-    # business3 = Business(business_id=3, region_area=["K", "L1"], interval=50, const_output=500,
-    #                 bins=bins, goods_type=1)
-    # business4 = Business(business_id=4, region_area=["L2", "M"], interval=5,
-    #                      bins=bins, goods_type=2)
-    # business4 = Business(business_id=5, region_area=["M", "N"], interval=5,
-    #                      bins=bins, vehicles=vehicles2, goods_type=2)
-    #
-    business5 = Business(business_id=5, region_area=["I", "L1"], interval=50, const_output=500,
-                         bins=bins, vehicles=vehicles1, goods_type=1)
+    business2 = Business(business_id=2, region_area=["J", "K"], interval=50, const_output=5,
+                    bins=bins, goods_type=1)
+    business3 = Business(business_id=3, region_area=["K", "L1"], interval=50, const_output=5,
+                    bins=bins, goods_type=1)
+    business4 = Business(business_id=4, region_area=["L2", "M"], interval=5,
+                         bins=bins, goods_type=2)
+    business4 = Business(business_id=5, region_area=["M", "N"], interval=5,
+                         bins=bins, vehicles=vehicles2, goods_type=2)
+    # 设备绑定的点位A
     data = {
         "name": '01',
+        "teleport_from": "",
+        "teleport_to": "",
         "origin_type": 1,
         "final_type": 2,
-        "from_area": "L1",
-        "bus_from": business1,
+        "from_area": 'L1',
+        "to_area": "L2",
+        "bus_from": 3,
+        "bus_to": 4,
         "working_time": 60,
         "changeSt": 0,
         "state": 0,
         "area":biyadi
     }
-    els = batch_creation_equipment(bins,data,["DHQ-01","DHQ-01"],["DHQ-02"],(1,0))
+    data['teleport_from'] =["DHQ-01"]
+    data['teleport_to'] =["DHQ-02"]
+    el1 = EL(bins=bins, data=data)
+    data['teleport_from'] =["DHQ-03"]
+    data['teleport_to'] =["DHQ-04"]
+    el2 = EL(bins=bins, data=data)
+    data['teleport_from'] = ["DHQ-05"]
+    data['teleport_to'] = ["DHQ-06"]
+    el3 = EL(bins=bins, data=data)
+    data['teleport_from'] = biyadi.get("J")
+    data['teleport_to'] = biyadi.get("K")
+    data['working_time'] = 30
+    data['bus_from'] = ''
+    data['bus_to']=''
+    data['final_type']=1
+    v_el1= EL(bins=bins, data=data)
+    data['teleport_from'] = biyadi.get("M")
+    data['teleport_to'] = biyadi.get("N")
+    data['final_type'] = 2
+    data['origin_type'] = 2
 
+    v_el2 = EL(bins=bins, data=data)
     tasks = []
-    for el in els:
-        tasks.append(asyncio.create_task(el.get_through()))
-
-    # tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
-    # tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
+    # tasks.append(asyncio.create_task(el1.get_through()))
+    # tasks.append(asyncio.create_task(el2.get_through()))
+    # tasks.append(asyncio.create_task(el3.get_through()))
+    # tasks.append(asyncio.create_task(v_el2.get_through()))
+    # tasks.append(asyncio.create_task(v_el1.get_through()))
+    tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
+    tasks.append(asyncio.create_task(business1.perform_task_load_box()))
     tasks.append(asyncio.create_task(bins.release_bins()))
     await asyncio.gather(*tasks)
 
