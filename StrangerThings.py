@@ -747,7 +747,7 @@ class EL():
         self.normal_manipulation = namedtuple('ability_data',
                                               ['name', 'teleportFrom', 'teleportTo', 'originType', 'finalType',
                                                'from_area', 'to_area', 'bus_from', 'bus_to', 'workingTime', 'changeSt',
-                                               'state'])
+                                               'state','area'])
         self.vehicle_dict = None if vehicles is None else {vehicle: {} for vehicle in vehicles}
         self.bins = bins
         self.power = self.init_area(data)
