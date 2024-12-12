@@ -764,7 +764,7 @@ class EL():
         # 初始化，teleport_from 、teleport_to
         positions_from=[]
         positions_to=[]
-        if data['from_area']:
+        if data.get("from_area"):
             # 获取 teleport_from 中每个元素在 库位Bins中 from_area 中的位置
             from_area = data['area'].get(data['from_area'])
             # from_area = weihai_binarea.get(data["from_area"])
@@ -775,7 +775,7 @@ class EL():
             # # 如果有元素不存在，就抛异常
             # if positions_from.__contains__(-1):
             #     raise ValueError(f"teleport_from有误，在from_area找不到")
-        if data["to_area"]:
+        if data.get("to_area"):
             # 获取 teleport_to 中每个元素在  库位Bins中 to_area 中的位置
             to_area = data['area'].get(data["to_area"])
             # to_area = weihai_binarea.get(data["to_area"])
@@ -1121,9 +1121,7 @@ async def main():
         "teleport_to": "",
         "origin_type": 1,
         "final_type": 2,
-        "from_area": 'L1',
         "to_area": "L2",
-        "bus_from": '',
         "bus_to": '',
         "working_time": 60,
         "changeSt": 0,
@@ -1147,8 +1145,8 @@ async def main():
     tasks.append(asyncio.create_task(el1.get_through()))
     tasks.append(asyncio.create_task(el2.get_through()))
     tasks.append(asyncio.create_task(el3.get_through()))
-    tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
-    tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
+    # tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
+    # tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
     tasks.append(asyncio.create_task(bins.release_bins()))
     await asyncio.gather(*tasks)
 
