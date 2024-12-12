@@ -794,7 +794,8 @@ class EL():
                                         data["bus_to"],
                                         data["working_time"],
                                         data["changeSt"],
-                                        data["state"]
+                                        data["state"],
+                                        data["area"]
                                         )
 
     async def get_through(self):
@@ -845,20 +846,18 @@ class EL():
                         # 加工结束
                         self.power = self.power._replace(state=0)
                         # 出发业务把货拿走
-                        if self.power.bus_to:
-                            asyncio.create_task(self.power.bus_to.perform_task(from_appoints=[value]))
+                        asyncio.create_task(self.power.bus_to.perform_task(from_appoints=[value]))
                         teleport_flg = False
                         break
                 if teleport_flg:
                     # 代码能走到这里，说明设备没有找到库位去放货，触发业务过来取货
-                    if self.power.bus_to:
-                        tasks = []
-                        for key, value in self.power.teleportTo.items():
-                            appoints = [value]
-                            task = asyncio.create_task(self.power.bus_to.perform_task(from_appoints=appoints))
-                            tasks.append(task)
-                        # 这里是需要等待至少有一个业务补货完成再继续运功设备
-                        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                    tasks = []
+                    for key, value in self.power.teleportTo.items():
+                        appoints = [value]
+                        task = asyncio.create_task(self.power.bus_to.perform_task(from_appoints=appoints))
+                        tasks.append(task)
+                    # 这里是需要等待至少有一个业务补货完成再继续运功设备
+                    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             # 让出CPU
             await asyncio.sleep(0.5)
 
@@ -1046,6 +1045,78 @@ class OrderSystem:
 #     await asyncio.gather(*tasks)
 
 
+# # 比亚迪料箱车逻辑测试
+# async def main():
+#     # 初始化发单系统
+#     test_data1 = {'I': biyadi.get("I")}
+#     test_data2 = {'J': biyadi.get("J")}
+#     test_data3 = {'K': biyadi.get("K")}
+#     test_data4 = {'L1': biyadi.get("L1")}
+#     test_data5 = {'L2': biyadi.get("L2")}
+#     test_data6 = {'M': biyadi.get("M")}
+#     test_data7 = {'N': biyadi.get("N")}
+#
+#     bins = Bins()
+#
+#     order_system = OrderSystem(bins=bins)
+#     bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=100)
+#     bins.update_area(test_data2, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+#     bins.update_area(test_data3, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+#     bins.update_area(test_data4, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+#     bins.update_area(test_data5, autoAddType=0, autoClearType=0, ifrandom=True,randomTuple=(0,2),autoInterval=0)
+#     bins.update_area(test_data6, goodsType=0,autoAddType=0, autoClearType=2,autoInterval=0)
+#
+#     vehicles1=[f"container-X-0{i}" for i in range(1,5)]
+#     vehicles2=["container-D-03" , "container-D-06"]
+#     business1 = Business(business_id=1, region_area=["I", "J"], interval=50, const_output=500,
+#                     bins=bins, vehicles=vehicles1, goods_type=1)
+#     business2 = Business(business_id=2, region_area=["J", "K"], interval=50, const_output=500,
+#                     bins=bins, goods_type=1)
+#     business3 = Business(business_id=3, region_area=["K", "L1"], interval=50, const_output=500,
+#                     bins=bins, goods_type=1)
+#     business4 = Business(business_id=4, region_area=["L2", "M"], interval=5,
+#                          bins=bins, goods_type=2)
+#     business4 = Business(business_id=5, region_area=["M", "N"], interval=5,
+#                          bins=bins, vehicles=vehicles2, goods_type=2)
+#     # 设备绑定的点位A
+#     data = {
+#         "name": '01',
+#         "teleport_from": "",
+#         "teleport_to": "",
+#         "origin_type": 1,
+#         "final_type": 2,
+#         "from_area": 'L1',
+#         "to_area": "L2",
+#         "bus_from": business3,
+#         "bus_to": business4,
+#         "working_time": 60,
+#         "changeSt": 0,
+#         "state": 0
+#     }
+#     data['teleport_from'] =["DHQ-01"]
+#     data['teleport_to'] =["DHQ-02"]
+#     el1 = EL(bins=bins, data=data)
+#     data['teleport_from'] =["DHQ-03"]
+#     data['teleport_to'] =["DHQ-04"]
+#     el2 = EL(bins=bins, data=data)
+#     data['teleport_from'] = ["DHQ-05"]
+#     data['teleport_to'] = ["DHQ-06"]
+#     el3 = EL(bins=bins, data=data)
+#     data['teleport_from'] = ["DHQ-03"]
+#     data['teleport_to'] = ["DHQ-04"]
+#     v_el1= EL(bins=bins, data=data)
+#     v_el1= EL(bins=bins, data=data)
+#
+#     tasks = []
+#     tasks.append(asyncio.create_task(el1.get_through()))
+#     tasks.append(asyncio.create_task(el2.get_through()))
+#     tasks.append(asyncio.create_task(el3.get_through()))
+#     tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+#     tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+#     tasks.append(asyncio.create_task(bins.release_bins()))
+#     await asyncio.gather(*tasks)
+
+
 # 比亚迪料箱车逻辑测试
 async def main():
     # 初始化发单系统
@@ -1061,7 +1132,7 @@ async def main():
 
     order_system = OrderSystem(bins=bins)
     bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=100)
-    bins.update_area(test_data2, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+    bins.update_area(test_data2, autoAddType=0, autoClearType=1, ifrandom=True,autoInterval=100)
     bins.update_area(test_data3, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
     bins.update_area(test_data4, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
     bins.update_area(test_data5, autoAddType=0, autoClearType=0, ifrandom=True,randomTuple=(0,2),autoInterval=0)
@@ -1088,8 +1159,8 @@ async def main():
         "final_type": 2,
         "from_area": 'L1',
         "to_area": "L2",
-        "bus_from": '',
-        "bus_to": '',
+        "bus_from": 3,
+        "bus_to": 4,
         "working_time": 60,
         "changeSt": 0,
         "state": 0,
@@ -1104,15 +1175,27 @@ async def main():
     data['teleport_from'] = ["DHQ-05"]
     data['teleport_to'] = ["DHQ-06"]
     el3 = EL(bins=bins, data=data)
-    data['teleport_from'] = ["DHQ-03"]
-    data['teleport_to'] = ["DHQ-04"]
+    data['teleport_from'] = biyadi.get("J")
+    data['teleport_to'] = biyadi.get("K")
+    data['working_time'] = 30
+    data['bus_from'] = ''
+    data['bus_to']=''
+    data['final_type']=1
     v_el1= EL(bins=bins, data=data)
+    data['teleport_from'] = biyadi.get("M")
+    data['teleport_to'] = biyadi.get("N")
+    data['final_type'] = 2
+    data['origin_type'] = 2
+
+    v_el2 = EL(bins=bins, data=data)
     tasks = []
-    tasks.append(asyncio.create_task(el1.get_through()))
-    tasks.append(asyncio.create_task(el2.get_through()))
-    tasks.append(asyncio.create_task(el3.get_through()))
+    # tasks.append(asyncio.create_task(el1.get_through()))
+    # tasks.append(asyncio.create_task(el2.get_through()))
+    # tasks.append(asyncio.create_task(el3.get_through()))
+    # tasks.append(asyncio.create_task(v_el2.get_through()))
+    # tasks.append(asyncio.create_task(v_el1.get_through()))
     tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
-    tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
+    tasks.append(asyncio.create_task(business1.perform_task_load_box()))
     tasks.append(asyncio.create_task(bins.release_bins()))
     await asyncio.gather(*tasks)
 
