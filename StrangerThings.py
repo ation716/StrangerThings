@@ -773,8 +773,8 @@ class EL():
                 for element in data["teleport_from"]
             ]  # 如果元素不存在，返回 -1
             # # 如果有元素不存在，就抛异常
-            # if positions_from.__contains__(-1):
-            #     raise ValueError(f"teleport_from有误，在from_area找不到")
+            if positions_from.__contains__(-1):
+                raise ValueError(f"teleport_from有误，在from_area找不到")
         if data.get("to_area"):
             # 获取 teleport_to 中每个元素在  库位Bins中 to_area 中的位置
             to_area = data['area'].get(data["to_area"])
@@ -784,8 +784,8 @@ class EL():
                 for element in data["teleport_to"]
             ]  # 如果元素不存在，返回 -1
             # # 如果有元素不存在，就抛异常
-            # if positions_to.__contains__(-1):
-            #     raise ValueError(f"teleport_to有误，在to_area中找不到")
+            if positions_to.__contains__(-1):
+                raise ValueError(f"teleport_to有误，在to_area中找不到")
         # 初始化赋值 - 返回
         return self.normal_manipulation(data.get("name", ""),  # 如果不存在返回空字符串
                                         dict(zip(data.get("teleport_from", []), positions_from)),
@@ -922,14 +922,31 @@ def batch_creation_equipment(bins,data,teleport_from,teleport_to,ratio):
     """
     # 创建一个空的列表来存储实例
     entities = []
-    teleport_from_chunks = [teleport_from[i:i + ratio[0]] for i in range(0, len(teleport_from), ratio[0])]
-    teleport_to_chunks = [teleport_to[i:i + ratio[1]] for i in range(0, len(teleport_to), ratio[1])]
-    # 遍历两个列表的 chunk 组合
-    for teleport_from_chunk, teleport_to_chunk in zip(teleport_from_chunks, teleport_to_chunks):
-        data['teleport_from'] = teleport_from_chunk
-        data['teleport_to'] = teleport_to_chunk
-        entities.append(EL(bins=bins, data=data))
+    # 判断 ratio 是否是 (x, 0) 情况
+    if ratio[1] == 0:
+        teleport_from_chunks = [teleport_from[i:i + ratio[0]] for i in range(0, len(teleport_from), ratio[0])]
+        # 遍历两个列表的 chunk 组合
+        for teleport_from_chunk in teleport_from_chunks:
+            data['teleport_from'] = teleport_from_chunk
+            entities.append(EL(bins=bins, data=data))
+    # 判断 ratio 是否是 (0, x) 情况
+    elif ratio[0] == 0:
+        teleport_to_chunks = [teleport_to[i:i + ratio[1]] for i in range(0, len(teleport_to), ratio[1])]
+        # 遍历两个列表的 chunk 组合
+        for teleport_to_chunk in teleport_to_chunks:
+            data['teleport_to'] = teleport_to_chunk
+            entities.append(EL(bins=bins, data=data))
+    else:
+        # 否则按 ratio 分块
+        teleport_from_chunks = [teleport_from[i:i + ratio[0]] for i in range(0, len(teleport_from), ratio[0])]
+        teleport_to_chunks = [teleport_to[i:i + ratio[1]] for i in range(0, len(teleport_to), ratio[1])]
+        # 遍历两个列表的 chunk 组合
+        for teleport_from_chunk, teleport_to_chunk in zip(teleport_from_chunks, teleport_to_chunks):
+            data['teleport_from'] = teleport_from_chunk
+            data['teleport_to'] = teleport_to_chunk
+            entities.append(EL(bins=bins, data=data))
 
+    return entities
 
 # async def main():
 #     # 初始化发单系统
@@ -1096,7 +1113,7 @@ async def main():
 
     order_system = OrderSystem(bins=bins)
     bins.update_area(test_data1, autoAddType=1, autoClearType=0, ifrandom=True,autoInterval=100)
-    bins.update_area(test_data2, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
+    bins.update_area(test_data2, autoAddType=0, autoClearType=1, ifrandom=True,autoInterval=0)
     bins.update_area(test_data3, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
     bins.update_area(test_data4, autoAddType=0, autoClearType=0, ifrandom=True,autoInterval=0)
     bins.update_area(test_data5, autoAddType=0, autoClearType=0, ifrandom=True,randomTuple=(0,2),autoInterval=0)
@@ -1106,45 +1123,34 @@ async def main():
     vehicles2=["container-D-03" , "container-D-06"]
     business1 = Business(business_id=1, region_area=["I", "J"], interval=50, const_output=500,
                     bins=bins, vehicles=vehicles1, goods_type=1)
-    business2 = Business(business_id=2, region_area=["J", "K"], interval=50, const_output=500,
-                    bins=bins, goods_type=1)
-    business3 = Business(business_id=3, region_area=["K", "L1"], interval=50, const_output=500,
-                    bins=bins, goods_type=1)
-    business4 = Business(business_id=4, region_area=["L2", "M"], interval=5,
-                         bins=bins, goods_type=2)
-    business4 = Business(business_id=5, region_area=["M", "N"], interval=5,
-                         bins=bins, vehicles=vehicles2, goods_type=2)
-    # 设备绑定的点位A
+    # business2 = Business(business_id=2, region_area=["J", "K"], interval=50, const_output=500,
+    #                 bins=bins, goods_type=1)
+    # business3 = Business(business_id=3, region_area=["K", "L1"], interval=50, const_output=500,
+    #                 bins=bins, goods_type=1)
+    # business4 = Business(business_id=4, region_area=["L2", "M"], interval=5,
+    #                      bins=bins, goods_type=2)
+    # business4 = Business(business_id=5, region_area=["M", "N"], interval=5,
+    #                      bins=bins, vehicles=vehicles2, goods_type=2)
+    #
+    business5 = Business(business_id=5, region_area=["I", "L1"], interval=50, const_output=500,
+                         bins=bins, vehicles=vehicles1, goods_type=1)
     data = {
         "name": '01',
-        "teleport_from": "",
-        "teleport_to": "",
         "origin_type": 1,
         "final_type": 2,
-        "to_area": "L2",
-        "bus_to": '',
+        "from_area": "L1",
+        "bus_from": business1,
         "working_time": 60,
         "changeSt": 0,
         "state": 0,
         "area":biyadi
     }
-    batch_creation_equipment(bins,data,["DHQ-01","DHQ-01"],["DHQ-02"],(1,1))
-    data['teleport_from'] =["DHQ-01"]
-    data['teleport_to'] =["DHQ-02"]
-    el1 = EL(bins=bins, data=data)
-    data['teleport_from'] =["DHQ-03"]
-    data['teleport_to'] =["DHQ-04"]
-    el2 = EL(bins=bins, data=data)
-    data['teleport_from'] = ["DHQ-05"]
-    data['teleport_to'] = ["DHQ-06"]
-    el3 = EL(bins=bins, data=data)
-    data['teleport_from'] = ["DHQ-03"]
-    data['teleport_to'] = ["DHQ-04"]
-    v_el1= EL(bins=bins, data=data)
+    els = batch_creation_equipment(bins,data,["DHQ-01","DHQ-01"],["DHQ-02"],(1,0))
+
     tasks = []
-    tasks.append(asyncio.create_task(el1.get_through()))
-    tasks.append(asyncio.create_task(el2.get_through()))
-    tasks.append(asyncio.create_task(el3.get_through()))
+    for el in els:
+        tasks.append(asyncio.create_task(el.get_through()))
+
     # tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
     # tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
     tasks.append(asyncio.create_task(bins.release_bins()))
