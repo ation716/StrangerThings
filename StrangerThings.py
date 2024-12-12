@@ -764,7 +764,8 @@ class EL():
         """
         # 初始化，teleport_from 、teleport_to
         # 获取 teleport_from 中每个元素在 库位Bins中 from_area 中的位置
-        from_area = weihai_binarea.get(data["from_area"])
+        from_area = data['area'].get(data['from_area'])
+        # from_area = weihai_binarea.get(data["from_area"])
         positions_from = [
             from_area.index(element) if element in from_area else -1
             for element in data["teleport_from"]
@@ -773,7 +774,8 @@ class EL():
         if positions_from.__contains__(-1):
             raise ValueError(f"teleport_from有误，在from_area找不到")
         # 获取 teleport_to 中每个元素在  库位Bins中 to_area 中的位置
-        to_area = weihai_binarea.get(data["to_area"])
+        to_area = data['area'].get(data["to_area"])
+        # to_area = weihai_binarea.get(data["to_area"])
         positions_to = [
             to_area.index(element) if element in to_area else -1
             for element in data["teleport_to"]
@@ -814,21 +816,24 @@ class EL():
                         # 将库位设为空 - 货物这会在设备上
                         await self.bins.change_state(self.power.from_area,value,0)
                         # 触发业务过来放货
-                        asyncio.create_task(self.power.bus_from.perform_task(to_appoints=[value]))
+                        if self.power.bus_from :
+                            asyncio.create_task(self.power.bus_from.perform_task(to_appoints=[value]))
                         # 库位中存在有货库位
                         teleport_flg = False
                         break
                 if teleport_flg:
                     # 代码能走到这里，说明设备空闲的，但没有找到库位去取货，触发业务过来放货
-                    tasks = []
-                    for key, value in self.power.teleportFrom.items():
-                        appoints = [value]
-                        task = asyncio.create_task(self.power.bus_from.perform_task(to_appoints=appoints))
-                        tasks.append(task)
-                    # 这里是需要等待至少有一个业务补货完成再继续运功设备
-                    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                    if self.power.bus_from:
+                        tasks = []
+                        for key, value in self.power.teleportFrom.items():
+                            appoints = [value]
+                            task = asyncio.create_task(self.power.bus_from.perform_task(to_appoints=appoints))
+                            tasks.append(task)
+                        # 这里是需要等待至少有一个业务补货完成再继续运功设备
+                        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
 
             # 设备运行中，待加工完成，去放货
+
             if self.power.state == 1 and (time.time() - self.power.changeSt) >= random.gauss(mu=self.power.workingTime,
                                                                                              sigma=0.1 * self.power.workingTime):
                 # 标记teleportTo中库位是否有货
@@ -840,18 +845,20 @@ class EL():
                         # 加工结束
                         self.power = self.power._replace(state=0)
                         # 出发业务把货拿走
-                        asyncio.create_task(self.power.bus_to.perform_task(from_appoints=[value]))
+                        if self.power.bus_to:
+                            asyncio.create_task(self.power.bus_to.perform_task(from_appoints=[value]))
                         teleport_flg = False
                         break
                 if teleport_flg:
                     # 代码能走到这里，说明设备没有找到库位去放货，触发业务过来取货
-                    tasks = []
-                    for key, value in self.power.teleportTo.items():
-                        appoints = [value]
-                        task = asyncio.create_task(self.power.bus_to.perform_task(from_appoints=appoints))
-                        tasks.append(task)
-                    # 这里是需要等待至少有一个业务补货完成再继续运功设备
-                    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                    if self.power.bus_to:
+                        tasks = []
+                        for key, value in self.power.teleportTo.items():
+                            appoints = [value]
+                            task = asyncio.create_task(self.power.bus_to.perform_task(from_appoints=appoints))
+                            tasks.append(task)
+                        # 这里是需要等待至少有一个业务补货完成再继续运功设备
+                        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             # 让出CPU
             await asyncio.sleep(0.5)
 
@@ -1081,11 +1088,12 @@ async def main():
         "final_type": 2,
         "from_area": 'L1',
         "to_area": "L2",
-        "bus_from": business3,
-        "bus_to": business4,
+        "bus_from": '',
+        "bus_to": '',
         "working_time": 60,
         "changeSt": 0,
-        "state": 0
+        "state": 0,
+        "area":biyadi
     }
     data['teleport_from'] =["DHQ-01"]
     data['teleport_to'] =["DHQ-02"]
@@ -1103,8 +1111,8 @@ async def main():
     tasks.append(asyncio.create_task(el1.get_through()))
     tasks.append(asyncio.create_task(el2.get_through()))
     tasks.append(asyncio.create_task(el3.get_through()))
-    tasks.append(asyncio.create_task(business.perform_task_unload_box()))
-    tasks.append(asyncio.create_task(business.perform_task_unload_box()))
+    tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
+    tasks.append(asyncio.create_task(business1.perform_task_unload_box()))
     tasks.append(asyncio.create_task(bins.release_bins()))
     await asyncio.gather(*tasks)
 
