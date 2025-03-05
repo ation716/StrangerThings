@@ -50,43 +50,43 @@ weihai_normalarea={'A': {'AP415': 'LM490', 'AP412': 'LM489', 'AP413': 'LM491', '
                                           'AP238': 'LM779', 'AP231': 'LM794', 'AP237': 'LM781', 'AP234': 'LM797', 'AP235': 'LM798'},
                    'D': {'AP186': 'LM831', 'AP230': 'LM834', 'AP139': 'LM833', 'AP192': 'LM835', 'AP171': 'LM832', 'AP221': 'LM830', 'AP188': 'LM829'}}
 
-biyadi={
-    "L1":['DHQ-01','DHQ-03','DHQ-05'],
-    "L2":['DHQ-02','DHQ-04','DHQ-06'],
-    "K":[f'XCRK-0{i}' for i in range(1,9)],
-    "M":[f'DCRK-0{i}' for i in range(1,7)],
-    "N":['DCRK-01-01','DCRK-01-02','DCRK-01-03','DCRK-01-04','DCRK-01-05','DCRK-01-06',
-                 'DCRK-02-01','DCRK-02-02','DCRK-02-03','DCRK-02-04','DCRK-02-05','DCRK-02-06']+['DCRK-03-01','DCRK-03-02','DCRK-03-03','DCRK-03-04','DCRK-03-05','DCRK-03-06',
-                'DCRK-04-01','DCRK-04-02','DCRK-04-03','DCRK-04-04','DCRK-04-05','DCRK-04-06'],
-    "I": ['CCQX-02-01-01','CCQX-02-01-02','CCQX-02-01-03','CCQX-02-01-04','CCQX-02-01-05','CCQX-02-01-06','CCQX-02-01-07','CCQX-02-01-08','CCQX-02-01-09','CCQX-02-01-10',
-                'CCQX-02-01-11','CCQX-02-01-12','CCQX-02-01-13','CCQX-02-02-01','CCQX-02-02-02','CCQX-02-02-03','CCQX-02-02-04','CCQX-02-02-05','CCQX-02-02-06','CCQX-02-02-07',
-                'CCQX-02-02-08','CCQX-02-02-09','CCQX-02-02-10','CCQX-02-02-11','CCQX-02-02-12','CCQX-02-02-13','CCQX-02-03-01','CCQX-02-03-02','CCQX-02-03-03','CCQX-02-03-04',
-                'CCQX-02-03-05','CCQX-02-03-06','CCQX-02-03-07','CCQX-02-03-08','CCQX-02-03-09','CCQX-02-03-10','CCQX-02-03-11','CCQX-02-03-12','CCQX-02-03-13','CCQX-02-04-01',
-                'CCQX-02-04-02','CCQX-02-04-03','CCQX-02-04-04','CCQX-02-04-05','CCQX-02-04-06','CCQX-02-04-07','CCQX-02-04-08','CCQX-02-04-09','CCQX-02-04-10','CCQX-02-04-11',
-                'CCQX-02-04-12','CCQX-02-04-13','CCQX-02-05-01','CCQX-02-05-02','CCQX-02-05-03','CCQX-02-05-04','CCQX-02-05-05','CCQX-02-05-06','CCQX-02-05-07','CCQX-02-05-08',
-                'CCQX-02-05-09','CCQX-02-05-10','CCQX-02-05-11','CCQX-02-05-12','CCQX-02-05-13','CCQX-02-06-01','CCQX-02-06-02','CCQX-02-06-03','CCQX-02-06-04','CCQX-02-06-05',
-                'CCQX-02-06-06','CCQX-02-06-07','CCQX-02-06-08','CCQX-02-06-09','CCQX-02-06-10','CCQX-02-06-11','CCQX-02-06-12','CCQX-02-06-13','CCQX-02-07-01','CCQX-02-07-02',
-                'CCQX-02-07-03','CCQX-02-07-04','CCQX-02-07-05','CCQX-02-07-06','CCQX-02-07-07','CCQX-02-07-08','CCQX-02-07-09','CCQX-02-07-10','CCQX-02-07-11','CCQX-02-07-12',
-                'CCQX-02-07-13','CCQX-02-08-01','CCQX-02-08-02','CCQX-02-08-03','CCQX-02-08-04','CCQX-02-08-05','CCQX-02-08-06','CCQX-02-08-07','CCQX-02-08-08','CCQX-02-08-09',
-                'CCQX-02-08-10','CCQX-02-08-11','CCQX-02-08-12','CCQX-02-08-13','CCQX-02-09-01','CCQX-02-09-02','CCQX-02-09-03','CCQX-02-09-04','CCQX-02-09-05','CCQX-02-09-06',
-                'CCQX-02-09-07','CCQX-02-09-08','CCQX-02-09-09','CCQX-02-09-10','CCQX-02-09-11','CCQX-02-09-12','CCQX-02-09-13','CCQX-02-10-01','CCQX-02-10-02','CCQX-02-10-03',
-                'CCQX-02-10-04','CCQX-02-10-05','CCQX-02-10-06','CCQX-02-10-07','CCQX-02-10-08','CCQX-02-10-09','CCQX-02-10-10','CCQX-02-10-11','CCQX-02-10-12','CCQX-02-10-13',
-                'CCQX-02-11-01','CCQX-02-11-02','CCQX-02-11-03','CCQX-02-11-04','CCQX-02-11-05','CCQX-02-11-06','CCQX-02-11-07','CCQX-02-11-08','CCQX-02-11-09','CCQX-02-11-10',
-                'CCQX-02-11-11','CCQX-02-11-12','CCQX-02-11-13','CCQX-02-12-01','CCQX-02-12-02','CCQX-02-12-03','CCQX-02-12-04','CCQX-02-12-05','CCQX-02-12-06','CCQX-02-12-07',
-                'CCQX-02-12-08','CCQX-02-12-09','CCQX-02-12-10','CCQX-02-12-11','CCQX-02-12-12','CCQX-02-12-13','CCQX-02-13-01','CCQX-02-13-02','CCQX-02-13-03','CCQX-02-13-04',
-                'CCQX-02-13-05','CCQX-02-13-06','CCQX-02-13-07','CCQX-02-13-08','CCQX-02-13-09','CCQX-02-13-10','CCQX-02-13-11','CCQX-02-13-12','CCQX-02-13-13','CCQX-02-14-01',
-                'CCQX-02-14-02','CCQX-02-14-03','CCQX-02-14-04','CCQX-02-14-05','CCQX-02-14-06','CCQX-02-14-07','CCQX-02-14-08','CCQX-02-14-09','CCQX-02-14-10','CCQX-02-14-11',
-                'CCQX-02-14-12','CCQX-02-14-13','CCQX-02-15-01','CCQX-02-15-02','CCQX-02-15-03','CCQX-02-15-04','CCQX-02-15-05','CCQX-02-15-06','CCQX-02-15-07','CCQX-02-15-08',
-                'CCQX-02-15-09','CCQX-02-15-10','CCQX-02-15-11','CCQX-02-15-12','CCQX-02-15-13','CCQX-02-16-01','CCQX-02-16-02','CCQX-02-16-03','CCQX-02-16-04','CCQX-02-16-05',
-                'CCQX-02-16-06','CCQX-02-16-07','CCQX-02-16-08','CCQX-02-16-09','CCQX-02-16-10','CCQX-02-16-11','CCQX-02-16-12','CCQX-02-16-13','CCQX-02-17-01','CCQX-02-17-02',
-                'CCQX-02-17-03','CCQX-02-17-04','CCQX-02-17-05','CCQX-02-17-06','CCQX-02-17-07','CCQX-02-17-08','CCQX-02-17-09','CCQX-02-17-10','CCQX-02-17-11','CCQX-02-17-12'],
-    "J":[ 'XCRK-02-01','XCRK-02-02','XCRK-02-03','XCRK-02-04','XCRK-02-05','XCRK-02-06','XCRK-02-07','XCRK-02-08','XCRK-02-09',
-        'XCRK-03-01','XCRK-03-02','XCRK-03-03','XCRK-03-04','XCRK-03-05','XCRK-03-06','XCRK-03-07','XCRK-03-08','XCRK-03-09',
-        'XCRK-01-01','XCRK-01-02','XCRK-01-03','XCRK-01-04','XCRK-01-05','XCRK-01-06','XCRK-01-07','XCRK-01-08','XCRK-01-09',
-        'XCRK-04-01','XCRK-04-02','XCRK-04-03','XCRK-04-04','XCRK-04-05','XCRK-04-06','XCRK-04-07','XCRK-04-08','XCRK-04-09',
-          ]
-
-}
+# biyadi={
+#     "L1":['DHQ-01','DHQ-03','DHQ-05'],
+#     "L2":['DHQ-02','DHQ-04','DHQ-06'],
+#     "K":[f'XCRK-0{i}' for i in range(1,9)],
+#     "M":[f'DCRK-0{i}' for i in range(1,7)],
+#     "N":['DCRK-01-01','DCRK-01-02','DCRK-01-03','DCRK-01-04','DCRK-01-05','DCRK-01-06',
+#                  'DCRK-02-01','DCRK-02-02','DCRK-02-03','DCRK-02-04','DCRK-02-05','DCRK-02-06']+['DCRK-03-01','DCRK-03-02','DCRK-03-03','DCRK-03-04','DCRK-03-05','DCRK-03-06',
+#                 'DCRK-04-01','DCRK-04-02','DCRK-04-03','DCRK-04-04','DCRK-04-05','DCRK-04-06'],
+#     "I": ['CCQX-02-01-01','CCQX-02-01-02','CCQX-02-01-03','CCQX-02-01-04','CCQX-02-01-05','CCQX-02-01-06','CCQX-02-01-07','CCQX-02-01-08','CCQX-02-01-09','CCQX-02-01-10',
+#                 'CCQX-02-01-11','CCQX-02-01-12','CCQX-02-01-13','CCQX-02-02-01','CCQX-02-02-02','CCQX-02-02-03','CCQX-02-02-04','CCQX-02-02-05','CCQX-02-02-06','CCQX-02-02-07',
+#                 'CCQX-02-02-08','CCQX-02-02-09','CCQX-02-02-10','CCQX-02-02-11','CCQX-02-02-12','CCQX-02-02-13','CCQX-02-03-01','CCQX-02-03-02','CCQX-02-03-03','CCQX-02-03-04',
+#                 'CCQX-02-03-05','CCQX-02-03-06','CCQX-02-03-07','CCQX-02-03-08','CCQX-02-03-09','CCQX-02-03-10','CCQX-02-03-11','CCQX-02-03-12','CCQX-02-03-13','CCQX-02-04-01',
+#                 'CCQX-02-04-02','CCQX-02-04-03','CCQX-02-04-04','CCQX-02-04-05','CCQX-02-04-06','CCQX-02-04-07','CCQX-02-04-08','CCQX-02-04-09','CCQX-02-04-10','CCQX-02-04-11',
+#                 'CCQX-02-04-12','CCQX-02-04-13','CCQX-02-05-01','CCQX-02-05-02','CCQX-02-05-03','CCQX-02-05-04','CCQX-02-05-05','CCQX-02-05-06','CCQX-02-05-07','CCQX-02-05-08',
+#                 'CCQX-02-05-09','CCQX-02-05-10','CCQX-02-05-11','CCQX-02-05-12','CCQX-02-05-13','CCQX-02-06-01','CCQX-02-06-02','CCQX-02-06-03','CCQX-02-06-04','CCQX-02-06-05',
+#                 'CCQX-02-06-06','CCQX-02-06-07','CCQX-02-06-08','CCQX-02-06-09','CCQX-02-06-10','CCQX-02-06-11','CCQX-02-06-12','CCQX-02-06-13','CCQX-02-07-01','CCQX-02-07-02',
+#                 'CCQX-02-07-03','CCQX-02-07-04','CCQX-02-07-05','CCQX-02-07-06','CCQX-02-07-07','CCQX-02-07-08','CCQX-02-07-09','CCQX-02-07-10','CCQX-02-07-11','CCQX-02-07-12',
+#                 'CCQX-02-07-13','CCQX-02-08-01','CCQX-02-08-02','CCQX-02-08-03','CCQX-02-08-04','CCQX-02-08-05','CCQX-02-08-06','CCQX-02-08-07','CCQX-02-08-08','CCQX-02-08-09',
+#                 'CCQX-02-08-10','CCQX-02-08-11','CCQX-02-08-12','CCQX-02-08-13','CCQX-02-09-01','CCQX-02-09-02','CCQX-02-09-03','CCQX-02-09-04','CCQX-02-09-05','CCQX-02-09-06',
+#                 'CCQX-02-09-07','CCQX-02-09-08','CCQX-02-09-09','CCQX-02-09-10','CCQX-02-09-11','CCQX-02-09-12','CCQX-02-09-13','CCQX-02-10-01','CCQX-02-10-02','CCQX-02-10-03',
+#                 'CCQX-02-10-04','CCQX-02-10-05','CCQX-02-10-06','CCQX-02-10-07','CCQX-02-10-08','CCQX-02-10-09','CCQX-02-10-10','CCQX-02-10-11','CCQX-02-10-12','CCQX-02-10-13',
+#                 'CCQX-02-11-01','CCQX-02-11-02','CCQX-02-11-03','CCQX-02-11-04','CCQX-02-11-05','CCQX-02-11-06','CCQX-02-11-07','CCQX-02-11-08','CCQX-02-11-09','CCQX-02-11-10',
+#                 'CCQX-02-11-11','CCQX-02-11-12','CCQX-02-11-13','CCQX-02-12-01','CCQX-02-12-02','CCQX-02-12-03','CCQX-02-12-04','CCQX-02-12-05','CCQX-02-12-06','CCQX-02-12-07',
+#                 'CCQX-02-12-08','CCQX-02-12-09','CCQX-02-12-10','CCQX-02-12-11','CCQX-02-12-12','CCQX-02-12-13','CCQX-02-13-01','CCQX-02-13-02','CCQX-02-13-03','CCQX-02-13-04',
+#                 'CCQX-02-13-05','CCQX-02-13-06','CCQX-02-13-07','CCQX-02-13-08','CCQX-02-13-09','CCQX-02-13-10','CCQX-02-13-11','CCQX-02-13-12','CCQX-02-13-13','CCQX-02-14-01',
+#                 'CCQX-02-14-02','CCQX-02-14-03','CCQX-02-14-04','CCQX-02-14-05','CCQX-02-14-06','CCQX-02-14-07','CCQX-02-14-08','CCQX-02-14-09','CCQX-02-14-10','CCQX-02-14-11',
+#                 'CCQX-02-14-12','CCQX-02-14-13','CCQX-02-15-01','CCQX-02-15-02','CCQX-02-15-03','CCQX-02-15-04','CCQX-02-15-05','CCQX-02-15-06','CCQX-02-15-07','CCQX-02-15-08',
+#                 'CCQX-02-15-09','CCQX-02-15-10','CCQX-02-15-11','CCQX-02-15-12','CCQX-02-15-13','CCQX-02-16-01','CCQX-02-16-02','CCQX-02-16-03','CCQX-02-16-04','CCQX-02-16-05',
+#                 'CCQX-02-16-06','CCQX-02-16-07','CCQX-02-16-08','CCQX-02-16-09','CCQX-02-16-10','CCQX-02-16-11','CCQX-02-16-12','CCQX-02-16-13','CCQX-02-17-01','CCQX-02-17-02',
+#                 'CCQX-02-17-03','CCQX-02-17-04','CCQX-02-17-05','CCQX-02-17-06','CCQX-02-17-07','CCQX-02-17-08','CCQX-02-17-09','CCQX-02-17-10','CCQX-02-17-11','CCQX-02-17-12'],
+#     "J":[ 'XCRK-02-01','XCRK-02-02','XCRK-02-03','XCRK-02-04','XCRK-02-05','XCRK-02-06','XCRK-02-07','XCRK-02-08','XCRK-02-09',
+#         'XCRK-03-01','XCRK-03-02','XCRK-03-03','XCRK-03-04','XCRK-03-05','XCRK-03-06','XCRK-03-07','XCRK-03-08','XCRK-03-09',
+#         'XCRK-01-01','XCRK-01-02','XCRK-01-03','XCRK-01-04','XCRK-01-05','XCRK-01-06','XCRK-01-07','XCRK-01-08','XCRK-01-09',
+#         'XCRK-04-01','XCRK-04-02','XCRK-04-03','XCRK-04-04','XCRK-04-05','XCRK-04-06','XCRK-04-07','XCRK-04-08','XCRK-04-09',
+#           ]
+#
+# }
 
 
 
@@ -97,7 +97,7 @@ class Bins():
     def __init__(self, data=None):
         # self.bindata = namedtuple('bindata', ['bin', 'prebin', 'hasGoods', 'lockId', 'autoAdd', 'autoClear','timestamp','autoInterval'])
         #                                        库位点 前置点  是否有货  锁定的运单id 自动加货 自动清货 状态改变时间戳 自动加货或者清货的间隔
-        self.bindata = namedtuple('bindata', ['name', 'goodsType', 'lockId', 'autoAddType', 'autoClearType', 'changeSt',
+        self.bindata = namedtuple('bindata', ['name', 'prebin','goodsType', 'lockId', 'autoAddType', 'autoClearType', 'changeSt',
                                               'autoInterval'])
         self.binarea = self.init_area(data)  # 库区信息 {"area_name":{bin_list:[],index:0}}  # index 记录遍历位置
         self.core = CoreUtil()
@@ -107,11 +107,15 @@ class Bins():
     def __del__(self):
         pass
 
-    def init_area(self, data):
+    def init_area(self, data=None):
         """
         :return: return {} if data is None
         """
-        return {}
+        self.binarea={}
+        if data:
+            self.update_area(data)
+        return self.binarea
+
 
     def _continues_serach(self, lst):
         """"""
@@ -135,7 +139,7 @@ class Bins():
  # 找到目标元素，返回当前索引
             index += 1
 
-    def update_area(self, data, goodsType=0, autoAddType=0, autoClearType=0, autoInterval=0, ifrandom=False,
+    def update_area(self, data=None, goodsType=0, autoAddType=0, autoClearType=0, autoInterval=0, ifrandom=False,
                     randomTuple=(0, 1)):
         """
         literal meaning
@@ -159,6 +163,23 @@ class Bins():
                                      autoInterval))
             self.binarea.setdefault(name, {}).setdefault('index', 0)
         return True
+
+    def update_bin_attr(self,data):
+        """
+
+        :param data:
+        :return:
+        """
+        for name,attr in data.items():
+            if self.binarea.get(name):
+                for i in range(len(self.binarea[name]['bin_list'])):
+                    if attr[4]:
+                        self.binarea[name]['bin_list'][i]=self.binarea[name]['bin_list'][i]._replace(goodsType=random.choice(attr[5]),autoAddType=attr[1],autoClearType=attr[2],autoInterval=attr[3])
+                    else:
+                        self.binarea[name]['bin_list'][i]=self.binarea[name]['bin_list'][i]._replace(
+                            goodsType=attr[0], autoAddType=attr[1], autoClearType=attr[2],
+                            autoInterval=attr[3])
+
 
     @property
     def semaphores(self):
@@ -270,7 +291,7 @@ class Bins():
                     self.binarea[area_name]['bin_list'][pos[1]] = \
                         self.binarea[area_name]['bin_list'][pos[1]]._replace(lockId=oid)
             await self.release_all(semaphores)
-            return [pos[2] for pos in all_pos]
+            return [pos[2] if isinstance(pos,tuple) else pos for pos in all_pos]
 
     async def choose_pos2(self, area_list:list,state:int,oid:str,load_index,unload_index,region) -> tuple:
         """"""
@@ -475,12 +496,13 @@ class Business:
                  from_index: Union[int, str] = 0, to_index: Union[int, str] = 1, group=None, interval=1, const_output=1,
                  mode=0):
         """
-        :param business_id: 业务id
+        :param business_id: int 业务id
         :param region_area: 搬运区域
         :param from_index: 取货区域
         :param to_index: 取货区域
         :param bins: 库区对象
         :param vehicles: 这些业务需要由哪车完成， 暂时用于跟踪料箱车信息
+        :param vehicle_type: 车体类型
         :param goods_type: 取货的货物类型
         :param group: 指定机器人组
         :param interval: 发单间隔等同于生产环境中机器的生产节拍
@@ -493,6 +515,7 @@ class Business:
         self.to_index = to_index if isinstance(to_index, int) else self.region_area.index(to_index)
         self.interval = interval
         self.bins = bins
+        self.vehicle_type = vehicle_type
         self.goods_type = goods_type
         self.const_output = const_output
         self.group = group
@@ -504,7 +527,8 @@ class Business:
         # self.core = None
 
     async def perform_task_load_box(self):
-        """料箱车取货运单"""
+        """料箱车取货运单
+        """
         while True:
             # 等待库位资源
             to_send = self.const_output - sum((0 for i in self.runing if i[0] == 0))
@@ -601,10 +625,10 @@ class Business:
             await asyncio.sleep(1)
 
 
-    async def perform_task(self, from_appoints=None, to_appoints=None):
+    async def perform_task_normal(self, from_appoints=None, to_appoints=None):
         """
-        取放货一体
-        :param from_appoints: 指定去哪儿放货， 列表：0库位名，1index ,index指的是该库位在库区中是第几个
+        通过addblock取放货
+        :param from_appoints: 指定去哪儿放货， 列表：0库位名，1 index ,index指的是该库位在库区中是第几个
         :param to_appoints: 指定去哪儿取货, 同上
         :return:
         """
@@ -739,8 +763,8 @@ class EL():
         name: 设备名
         teleportFrom: 加工取货地,列表
         teleportTo: 加工放货地,列表
-        originType: 加工前货物类型
-        finalType: 加工后货物类型   
+        originGoods: 加工需要的货
+        finalType: 加工后产生的货物
         from_area: 取货地的库位归属的区域
         to_area: 放货地的库位归属的区域
         bus_from: 触发补货业务
@@ -748,13 +772,14 @@ class EL():
         workingTime: 加工需要的时间   
         changeSt: 上次使用设备的时间
         state: 设备状态，-1表示设备停用，0表示设备启用中，且设备空闲，1表示设备正在加工货物
+        paln: 生产计划
         """
         self.normal_manipulation = namedtuple('ability_data',
                                               ['name', 'teleportFrom', 'teleportTo', 'originType', 'finalType',
                                                'from_area', 'to_area', 'bus_from', 'bus_to', 'workingTime', 'changeSt',
                                                'state','area'])
         self.bins = bins
-        self.power = self.init_area(data)
+        self.power = self.init_area(data)  # 设备数据结构
         EL.gifted_counter += 1
 
     def __del__(self):
@@ -762,7 +787,7 @@ class EL():
 
     def init_area(self, data):
         """
-        初始化
+        初始化设备
         :param data:
         :return:
         """
