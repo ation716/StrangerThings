@@ -66,9 +66,9 @@ class Bins():
         autoInterval is the time for automatically changing the goods,shareable indicates whether it is shareable;
         """
 
-        self.bindata = namedtuple('bindata', ['name', 'prebin','goodsType', 'lockId', 'autoAddType', 'autoClearType', 'changeSt',
-                                              'autoInterval','shareable'])
-        self.binarea = self.init_area(data)  #  format:{"area_name":{bin_list:[],index:0,statistic:{}}}  # index records the traversal position, and statistic records the quantity of each type of goods
+        self.bindata = namedtuple('bindata', ['name', 'prebin','goodsType', 'lockId', 'changeSt',
+                                              'shareable'])
+        self.binarea = self.init_area(data)  #  format:{"area_name":{bin_list:[],statistic:-1,autoTime:-1,autoAdd:-1,autoClear:-1,autoInterval:-1}}  area_name is the name of the storage area ;index records the traversal position, and statistic records the quantity of each type of goods
 
 
     def __del__(self):
@@ -94,33 +94,63 @@ class Bins():
     def update_area(self, data=None, goodsType=0, autoAddType=-1, autoClearType=-1, autoInterval=-1, ifrandom=False,
                     randomTuple=(0, 1),shareable=False):
         """
-        literal meaning
-        :param data: {area_name:[bins,...]}
-        :param goodsType: 将所有库位初始化为hasGods的值
-        :param autoAddType: 自动加货
-        :param autoClearType: 自动清货
-        :param autoInterval: 自动任务间隔
-        :param ifrandom: 库位的hasGoods未指定时是否随机
+        :param data: {area_name:[bin_name,...]}
+        :param goodsType:
+        :param autoAddType:
+        :param autoClearType:
+        :param autoInterval:
+        :param ifrandom:
+        :param randomTuple:
+        :param shareable: shareable
         :return:
         """
-        for name, locs in data.items():
-            for loc in locs:
-                if ifrandom:
-                    self.binarea.setdefault(name, {}).setdefault('bin_list', []).append(
-                        self.bindata(loc, random.choice(randomTuple), 0, autoAddType, autoClearType, time.time(),
-                                     autoInterval))
-                else:
-                    self.binarea.setdefault(name, {}).setdefault('bin_list', []).append(
-                        self.bindata(loc, goodsType, 0, autoAddType, autoClearType, time.time(),
-                                     autoInterval))
-            self.binarea.setdefault(name, {}).setdefault('index', 0)
+        for area_name, bins in data.items():
+            goods_count=0
+            if isinstance(bins, list):
+                for bin_name in bins:
+                    if ifrandom:
+                        gt=random.choice(randomTuple)
+                        if gt:
+                            goods_count+=1
+                        self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
+                            self.bindata(bin_name, None,gt, -1, time.time(),shareable))
+                    else:
+                        if goodsType:
+                            goods_count+=1
+                        self.binarea.setdefault(name, {}).setdefault('bin_list', []).append(
+                            self.bindata(bin_name,None,goodsType, -1,time.time(),shareable))
+                self.binarea.setdefault(area_name, {}).setdefault('index', 0)
+                self.binarea.setdefault(area_name, {}).setdefault('satistic', goods_count)
+                self.binarea.setdefault(area_name, {}).setdefault('autoTime', -1)
+                self.binarea.setdefault(area_name, {}).setdefault('autoAdd', autoAddType)
+                self.binarea.setdefault(area_name, {}).setdefault('autoClear', autoClearType)
+                self.binarea.setdefault(area_name, {}).setdefault('autoInterval', autoInterval)
+            elif isinstance(bins, dict): # has a preceding point, dict format {prePoint:point}
+                for pre,bin_name in bins.items():
+                    if ifrandom:
+                        if ifrandom:
+                            gt = random.choice(randomTuple)
+                            if gt:
+                                goods_count += 1
+                            self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
+                                self.bindata(bin_name, pre, gt, -1, time.time(), shareable))
+                        else:
+                            if goodsType:
+                                goods_count += 1
+                            self.binarea.setdefault(name, {}).setdefault('bin_list', []).append(
+                                self.bindata(bin_name, pre, goodsType, -1, time.time(), shareable))
+                self.binarea.setdefault(area_name, {}).setdefault('index', 0)
+                self.binarea.setdefault(area_name, {}).setdefault('satistic', goods_count)
+                self.binarea.setdefault(area_name, {}).setdefault('autoTime', -1)
+                self.binarea.setdefault(area_name, {}).setdefault('autoAdd', autoAddType)
+                self.binarea.setdefault(area_name, {}).setdefault('autoClear', autoClearType)
+                self.binarea.setdefault(area_name, {}).setdefault('autoInterval', autoInterval)
+            else:
+                raise ValueError('bins must be a list or a dict')
         return True
 
     def update_bin(self,data):
-        """
-
-        :param data:
-        :return:
+        """ for other system update
         """
         for name,attr in data.items():
             if self.binarea.get(name):
