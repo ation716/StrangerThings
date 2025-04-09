@@ -136,7 +136,7 @@ class Bins():
             if sleep_count >= 5:
                 time.sleep(0.1)
                 sleep_count = 0
- # 找到目标元素，返回当前索引
+    # 找到目标元素，返回当前索引
             index += 1
 
     def update_area(self, data=None, goodsType=0, autoAddType=0, autoClearType=0, autoInterval=0, ifrandom=False,
