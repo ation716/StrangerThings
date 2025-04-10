@@ -1,18 +1,17 @@
 from binLib import Bins
-
+from CoreUtils import CoreUtil
 
 
 class Business:
     """业务"""
 
-    def __init__(self, business_id: int, bins: Bins=None, from_area:str="",to_area:str="",group:str="",label:str="",vehicle_type:str="",goods_type: int=0,
-                 from_index: Union[int, str] = 0, to_index: Union[int, str] = 1, group=None, interval=1, const_output=1,
-                 mode=0):
+    def __init__(self, business_id: int, bins: Bins=None, from_areas:str="",to_areas:str="",group:str="",label:str="",vehicle_type:str="",goods_type: int=0,
+                interval=10, const_output=1,mode=0,recognize:bool=False,):
         """
         :param business_id: int 业务id
         :param bins: 库区对象
-        :param from_area: 搬运区域
-        :param to_area: 取货区域
+        :param from_areas: 取货区域
+        :param to_areas: 放货区域
         :param group: 这些业务需要由些组完成， 料箱车需要跟踪料箱车信息
         :param label: 业务需要具有哪些标签的机器人弯成
         :param vehicle_type: 车体类型, 辅助指定动作
@@ -20,22 +19,25 @@ class Business:
         :param interval: 发单间隔等同于生产环境中机器的生产节拍
         :param const_output: 每次需要发单数量，等同于生产环境中机器每次的产量  # note 避免太多未完成运单累计，已下发未完成的不能超过const_output
         :param mode: 库位的动作模式 0 直接到库位，1 前置点库位， 2 前置点-库位-前置点
+        :param recognize: 是否识别
         """
         self.business_id = str(business_id)
-        self.from_area = from_area
-        self.from_index = from_index if isinstance(from_index, int) else self.region_area.index(from_index)
-        self.to_index = to_index if isinstance(to_index, int) else self.region_area.index(to_index)
-        self.interval = interval
         self.bins = bins
+        self.from_areas = from_areas
+        self.to_areas = to_areas
+        self.group = group
+        self.label = label
+
         self.vehicle_type = vehicle_type
         self.goods_type = goods_type
+        self.interval = interval
         self.const_output = const_output
-        self.group = group
-        self.vehicle_dict = None if vehicles is None else {vehicle: {} for vehicle in vehicles}  # {name:{cid:gid}}
-        self.runing = [(0, 0, 0) for i in range(self.const_output)]  # 正在执行的运单  (oid,area,index)
         self.mode = mode
+        # self.vehicle_dict = None if vehicles is None else {vehicle: {} for vehicle in vehicles}  # {name:{cid:gid}}
+        # self.runing = [(0, 0, 0) for i in range(self.const_output)]  # 正在执行的运单  (oid,area,index)
+        #
         self.core = CoreUtil()
-        self.operationArgs={}
+        # self.operationArgs={}
         # self.core = None
 
     async def perform_task_load_box(self):
