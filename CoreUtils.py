@@ -84,7 +84,7 @@ class CoreUtil(metaclass=SingletonMetaClass):
         oid = kwargs.get('oid')
         json_d = {
             'id': oid,
-            'keyRoute': kwargs.get('loc'),
+            'keyRoute': kwargs.get('loc').name,
             'complete': True,
             'priority': kwargs.get('priority'),
             'vehicle': kwargs.get('vehicle'),
@@ -92,8 +92,9 @@ class CoreUtil(metaclass=SingletonMetaClass):
             'blocks': [
                 {
                     'blockId': str(kwargs.get('goodsType'))+oid + ':01',
-                    'location': kwargs.get('loc'),
+                    'location': kwargs.get('loc').name,
                     "operation": "script",
+                    "binTask":kwargs.get('binTask'),
                     "script_name": "ctuNoBlock.py",
                     "script_args": {
                         "operation": kwargs.get('operation')
@@ -121,6 +122,11 @@ class CoreUtil(metaclass=SingletonMetaClass):
         """
         r = requests.get(cg.ip + f"/robotsStatus?vehicles={vehicle}").json()
         return r['report'][0]['rbk_report']['containers']
+
+    def get_robot_status(self)->requests.Response:
+        """查询机器人状态"""
+        r = requests.get(cg.ip + f"/robotsStatus?").json()
+        return r['report']
 
     def get_robot_current_order(self,vehicle):
         """

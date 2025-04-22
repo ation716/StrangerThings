@@ -17,7 +17,7 @@ import uuid
 from CoreUtils import CoreUtil
 import copy
 import heapq
-
+import logging
 core=None
 
 
@@ -39,7 +39,7 @@ class Bins():
 
         self.bindata = namedtuple('bindata', ['name', 'prebin','goodsType', 'lockId', 'changeSt',
                                               'shareable','priority'])
-        self.binarea = self.init_area(data)  #  format:{"area_name":{bin_list:[],total_bin:-1,statistic:{goods_type:num},otherInfo{autoTime:-1,autoAdd:-1,autoClear:-1,autoInterval:-1}}}
+        self.binarea = self.init_area(data)  #  format:{"area_name":{bin_list:[],total_bin:-1,satistic:{goods_type:num},otherInfo{autoTime:-1,autoAdd:-1,autoClear:-1,autoInterval:-1}}}
         self.ttheap={}   # a heap which consist of bin from areas in every goodstype
 
 
@@ -94,65 +94,65 @@ class Bins():
         :param shareable:
         :return:
         """
-        async with self.acquire_all([_area for _area in self.binarea]):
-            for area_name, bins in data.items():
-                goods_count={}
-                bins_count=0
-                if isinstance(bins, list):
-                    for bin_name in bins:
-                        if ifrandom: # generate goods randomly
-                            gt=random.choice(randomTuple)
-                            if goods_count.get(str(gt)):
-                                goods_count[str(gt)]+=1
-                            else:
-                                goods_count[str(gt)]=1
-                            self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
-                                self.bindata(bin_name, None,str(gt), -1, -1,shareable,priority))
+        self.acquire_all([_area for _area in self.binarea])
+        for area_name, bins in data.items():
+            goods_count={}
+            bins_count=0
+            if isinstance(bins, list):
+                for bin_name in bins:
+                    if ifrandom: # generate goods randomly
+                        gt=random.choice(randomTuple)
+                        if goods_count.get(str(gt)):
+                            goods_count[str(gt)]+=1
                         else:
-                             # generate specified goods
-                            if goods_count.get(str(goodsType)):
-                                goods_count[str(goodsType)] += 1
-                            else:
-                                goods_count[str(goodsType)] = 1
-                            self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
-                                self.bindata(bin_name,None,str(goodsType), -1,-1,shareable,priority))
-                        bins_count+=1
+                            goods_count[str(gt)]=1
+                        self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
+                            self.bindata(bin_name, None,str(gt), -1, -1,shareable,priority))
+                    else:
+                         # generate specified goods
+                        if goods_count.get(str(goodsType)):
+                            goods_count[str(goodsType)] += 1
+                        else:
+                            goods_count[str(goodsType)] = 1
+                        self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
+                            self.bindata(bin_name,None,str(goodsType), -1,-1,shareable,priority))
+                    bins_count+=1
 
-                elif isinstance(bins, dict): # has a preceding point, dict format {prePoint:point}
-                    for bin_name,pre in bins.items():
-                        if ifrandom:
-                            gt = random.choice(randomTuple)
-                            if goods_count.get(str(gt)):  # count goods
-                                goods_count[str(gt)] += 1
-                            else:
-                                goods_count[str(gt)] = 1
-                            self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
-                                self.bindata(bin_name, pre, str(gt), -1, time.time()+random.randint(1,5), shareable,priority))  # test
+            elif isinstance(bins, dict): # has a preceding point, dict format {prePoint:point}
+                for bin_name,pre in bins.items():
+                    if ifrandom:
+                        gt = random.choice(randomTuple)
+                        if goods_count.get(str(gt)):  # count goods
+                            goods_count[str(gt)] += 1
                         else:
-                            # generate specified goods
-                            if goods_count.get(str(goodsType)):
-                                goods_count[str(goodsType)] += 1
-                            else:
-                                goods_count[str(goodsType)] = 1
-                            self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
-                                self.bindata(bin_name, pre, str(goodsType), -1, -1, shareable,priority))
-                        bins_count+=1
-                else:
-                    raise ValueError('bins must be a list or a dict')
-                self.binarea.setdefault(area_name, {}).setdefault('total_bin', bins_count)
-                self.binarea.setdefault(area_name, {}).setdefault('statistic', goods_count)
-                if autoAddType != -1 or autoClearType != -1:
-                    self.binarea[area_name]['other_info']={}
-                    self.binarea[area_name]['other_info'].setdefault('autoTime', -1)
-                    self.binarea[area_name]['other_info'].setdefault('autoAdd', autoAddType)
-                    self.binarea[area_name]['other_info'].setdefault('autoClear', autoClearType)
-                    self.binarea[area_name]['other_info'].setdefault('autoInterval', autoInterval)
-            return True
+                            goods_count[str(gt)] = 1
+                        self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
+                            self.bindata(bin_name, pre, str(gt), -1, time.time()+random.randint(1,5), shareable,priority))  # test
+                    else:
+                        # generate specified goods
+                        if goods_count.get(str(goodsType)):
+                            goods_count[str(goodsType)] += 1
+                        else:
+                            goods_count[str(goodsType)] = 1
+                        self.binarea.setdefault(area_name, {}).setdefault('bin_list', []).append(
+                            self.bindata(bin_name, pre, str(goodsType), -1, -1, shareable,priority))
+                    bins_count+=1
+            else:
+                raise ValueError('bins must be a list or a dict')
+            self.binarea.setdefault(area_name, {}).setdefault('total_bin', bins_count)
+            self.binarea.setdefault(area_name, {}).setdefault('satistic', goods_count)
+            if autoAddType != -1 or autoClearType != -1:
+                self.binarea[area_name]['other_info']={}
+                self.binarea[area_name]['other_info'].setdefault('autoTime', -1)
+                self.binarea[area_name]['other_info'].setdefault('autoAdd', autoAddType)
+                self.binarea[area_name]['other_info'].setdefault('autoClear', autoClearType)
+                self.binarea[area_name]['other_info'].setdefault('autoInterval', autoInterval)
+        return True
 
     def update_bin(self,area_name,index,goods_type):
         """ for other system update bin data
         """
-        async with self.semaphores[area_name]:
+        with self.semaphores[area_name]:
             self.binarea[area_name]["bin_list"][index]=self.binarea[area_name]["bin_list"][index]._replace(goodsType=goods_type,changeSt=time.time())
             self.push_heap(area_name,goods_type,index)
 
@@ -165,6 +165,8 @@ class Bins():
     def pop_heap(self,area_name,goods_type):
         """opposite of push_heap"""
         self.binarea[area_name]['satistic'][str(goods_type)] -= 1
+        print(heapq.heappop(self.ttheap[area_name][str(goods_type)]))
+        print(heapq.heappop(self.ttheap[area_name][str(goods_type)]))
         return heapq.heappop(self.ttheap[area_name][str(goods_type)])
 
     async def acquire_all(self,semaphores:list=None):
@@ -188,22 +190,26 @@ class Bins():
         finally:
             await self.release_all(semaphores)
 
-    async def choose_pos(self, area_name, goods_type, lockId) -> tuple:
+    async def choose_pos(self, area_names, goods_type) -> tuple:
         """
         Find a storage location with the status of "goods_type" based on the provided "areaname" and then lock that location.
         :param area_name:
         :param goods_type:
-        :param lockId:
         :return:
         """
         while True:
-            if self.binarea[area_name]['satistic'][str(goods_type)]>0:
-                async with self.semaphores[area_name]:
-                    if self.ttheap.get(area_name) is None or self.ttheap[area_name].get(goods_type) is None:
-                        self.update_ttheap(area_name,goods_type)
-                    return self.pop_heap(area_name,goods_type)
-            else:
-                await asyncio.sleep(2)
+            if isinstance(area_names,str):
+                area_names=[area_names]
+            for area_name in area_names:
+                _count_goods_type=0 if self.binarea[area_name]['satistic'].get(str(goods_type)) is None else self.binarea[area_name]['satistic'][str(goods_type)]
+                if _count_goods_type>0:
+                    async with self.semaphores[area_name]:
+                        if self.ttheap.get(area_name) is None or self.ttheap[area_name].get(goods_type) is None:
+                            self.update_ttheap(area_name,goods_type)
+                        return area_name,self.pop_heap(area_name,goods_type)
+                else:
+                    await asyncio.sleep(2)
+
 
     async def choose_all(self, area_name, goods_type, lockId) -> tuple:
         """
@@ -213,6 +219,7 @@ class Bins():
         :param lockId:
         :return:
         """
+        pass
 
 
 
@@ -241,9 +248,12 @@ if __name__ == "__main__":
     test=Bins()
     test.update_area(weihai_normalarea,ifrandom=True)
     test.update_ttheap("A",1)
-    a=test.choose_pos("A",1,"1232")
+    a=test.choose_pos("A",1)
+    a=test.choose_pos("A",1)
+    a=test.choose_pos("A",1)
 
     pass
+    time.sleep(2)
     # buss_area = {
     #     'A': ['AP774', 'AP896', 'AP776', 'AP897', 'AP777'],
     #     'B': ['AP940', 'AP1350', 'AP1351', 'AP941', 'AP1352',
@@ -257,4 +267,5 @@ if __name__ == "__main__":
     #                   'B': ['AP273', 'AP271', 'AP270', 'AP272', 'AP269'],
     #                   'C': ['AP234', 'AP231', 'AP239', 'AP236', 'AP233', 'AP238', 'AP240', 'AP235', 'AP237', 'AP232'],
     #                   'D': ['AP188', 'AP139', 'AP221', 'AP186', 'AP192', 'AP230', 'AP171']}
+
 
